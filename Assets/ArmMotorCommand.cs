@@ -13,8 +13,12 @@ using Rover.Util.IOStream;
 
 namespace RosSharp.RosBridgeClient.Messages
 {
+    /// <summary>
+    /// TYPE CODE: 0x00
+    /// </summary>
     public class ArmMotorCommand : Message, ISerializable
     {
+        public static readonly byte TYPE_CODE = 0x00;
         [JsonIgnore] public const string RosMessageName = "ArmControl/ArmMotorCommand";
 
         public int[] MotorVel;
@@ -26,12 +30,22 @@ namespace RosSharp.RosBridgeClient.Messages
 
         public void Serialize(ByteArrayOutputStream ostream)
         {
-            throw new System.NotImplementedException();
+            ostream.Write(TYPE_CODE);
+            ostream.Write(MotorVel.Length);
+            foreach (int i in MotorVel)
+            {
+                ostream.Write(i);
+            }
         }
 
         public void Deserialize(ByteArrayInputStream istream)
         {
-            throw new System.NotImplementedException();
+            int length = istream.ReadInt();
+            MotorVel = new int[length];
+            for (int i = 0; i < length; i++)
+            {
+                MotorVel[i] = istream.ReadInt();
+            }
         }
     }
 }
