@@ -83,9 +83,9 @@ public class LidarSensor : MonoBehaviour
             
         }
 
-        if (counter == 100) {
-            Debug.Log(m_Distances[1]);
-            counter = 0;
-        }
+        //if (counter == 100) {
+        //    Debug.Log(m_Distances[1]);
+        //    counter = 0;
+        //}
     }
 }

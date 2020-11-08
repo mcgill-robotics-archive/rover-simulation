@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using RosSharp.RosBridgeClient;
 using RosSharp.RosBridgeClient.Messages;
-using Rover.Containers;
+using Rover.Util.Containers;
 using UnityEngine;
 
 public class RoverController : MonoBehaviour

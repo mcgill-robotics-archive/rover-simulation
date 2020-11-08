@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Rover.Containers
+namespace Rover.Util.Containers
 {
     public struct Pair<T, U> : IEquatable<Pair<T, U>> where T : struct where U : struct
     {

@@ -64,14 +64,10 @@ public class Motor : MonoBehaviour
         {
             if (currentAngularSpeed < TargetAngularSpeed)
             {
-                if (InvertRotationDirection)
-                {
-                    rb.AddRelativeTorque(new Vector3(0.0f, 0.0f, -20.0f), ForceMode.Force);
-                }
-                else
-                {
-                    rb.AddRelativeTorque(new Vector3(0.0f, 0.0f, 20.0f), ForceMode.Force);
-                }
+                rb.AddRelativeTorque(
+                    new Vector3(0.0f, 0.0f, InvertRotationDirection ? -20.0f : 20.0f),
+                    ForceMode.Force
+                );
             }
         }
     }
