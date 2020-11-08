@@ -9,6 +9,7 @@ using JetBrains.Annotations;
 
 namespace Rover.Util.IOStream
 {
+ 
     public interface IOutputStream<T>
     {
         int Count { get; }
@@ -62,6 +63,46 @@ namespace Rover.Util.IOStream
             {
                 return m_BackingList.ToArray();
             }
+        }
+
+        public void Write(short value)
+        {
+            Write(BitConverter.GetBytes(value));
+        }
+
+        public void Write(int value)
+        {
+            Write(BitConverter.GetBytes(value));
+        }
+
+        public void Write(long value)
+        {
+            Write(BitConverter.GetBytes(value));
+        }
+
+        public void Write(float value)
+        {
+            Write(BitConverter.GetBytes(value));
+        }
+
+        public void Write(double value)
+        {
+            Write(BitConverter.GetBytes(value));
+        }
+
+        public void Write(char value)
+        {
+            Write(BitConverter.GetBytes(value));
+        }
+
+        public void Write(bool value)
+        {
+            Write(BitConverter.GetBytes(value));
+        }
+
+        public void Write(ISerializable value)
+        {
+            value.Serialize(this);
         }
     }
 }
