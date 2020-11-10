@@ -6,10 +6,10 @@ using System.Linq;
 using System.Runtime.Remoting.Contexts;
 using System.Threading;
 using JetBrains.Annotations;
+using Rover.Except;
 
 namespace Rover.Util.IOStream
 {
- 
     public interface IOutputStream<T>
     {
         int Count { get; }
@@ -98,6 +98,63 @@ namespace Rover.Util.IOStream
         public void Write(bool value)
         {
             Write(BitConverter.GetBytes(value));
+        }
+
+        /// <summary>
+        /// must be int, float, short or ushort
+        /// </summary>
+        /// <typeparam name="T">must be int, float, short or ushort</typeparam>
+        /// <param name="arr">the array to write</param>
+        public void WriteArray<T>(T[] arr)
+        {
+            int length = arr.Length;
+            Write(length);
+            Type type = typeof(T);
+            if (type == typeof(int))
+            {
+                int[] intArr = arr.Cast<int>().ToArray();
+                for (int i = 0; i < length; i++)
+                {
+                    Write(intArr[i]);
+                }
+
+                return;
+            }
+
+            if (type == typeof(float))
+            {
+                float[] intArr = arr.Cast<float>().ToArray();
+                for (int i = 0; i < length; i++)
+                {
+                    Write(intArr[i]);
+                }
+
+                return;
+            }
+
+            if (type == typeof(short))
+            {
+                short[] intArr = arr.Cast<short>().ToArray();
+                for (int i = 0; i < length; i++)
+                {
+                    Write(intArr[i]);
+                }
+
+                return;
+            }
+
+            if (type == typeof(ushort))
+            {
+                ushort[] intArr = arr.Cast<ushort>().ToArray();
+                for (int i = 0; i < length; i++)
+                {
+                    Write(intArr[i]);
+                }
+
+                return;
+            }
+
+            throw new InvalidTypeException();
         }
 
         public void Write(ISerializable value)

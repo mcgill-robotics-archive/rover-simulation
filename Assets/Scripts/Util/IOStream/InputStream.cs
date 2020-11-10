@@ -1,6 +1,11 @@
 ﻿using System;
+using System.CodeDom;
 using System.IO;
+using System.Linq;
 using System.Threading;
+using Rover.Except;
+using UnityEngine;
+using UnityEngine.Assertions;
 
 namespace Rover.Util.IOStream
 {
@@ -62,6 +67,16 @@ namespace Rover.Util.IOStream
             lock (m_Array)
             {
                 short value = BitConverter.ToInt16(m_Array, m_NextIndex);
+                m_NextIndex += sizeof(short);
+                return value;
+            }
+        }
+
+        public ushort ReadUShort()
+        {
+            lock (m_Array)
+            {
+                ushort value = BitConverter.ToUInt16(m_Array, m_NextIndex);
                 m_NextIndex += sizeof(short);
                 return value;
             }
@@ -131,6 +146,63 @@ namespace Rover.Util.IOStream
                 m_NextIndex += sizeof(bool);
                 return value;
             }
+        }
+
+        /// <summary>
+        /// IMPORTANT: must be one of int, float, short, ushort
+        /// </summary>
+        /// <typeparam name="T">must be a serializable</typeparam>
+        /// <returns></returns>
+        public T[] ReadArray<T>()
+        {
+            Type type = typeof(T);
+
+            int length = ReadInt();
+            if (type == typeof(int))
+            {
+                int[] arr = new int[length];
+                for (int i = 0; i < length; i++)
+                {
+                    arr[i] = ReadInt();
+                }
+
+                return arr.Cast<T>().ToArray();
+            }
+
+            if (type == typeof(float))
+            {
+                float[] arr = new float[length];
+                for (int i = 0; i < length; i++)
+                {
+                    arr[i] = ReadFloat();
+                }
+
+                return arr.Cast<T>().ToArray();
+            }
+
+            if (type == typeof(short))
+            {
+                short[] arr = new short[length];
+                for (int i = 0; i < length; i++)
+                {
+                    arr[i] = ReadShort();
+                }
+
+                return arr.Cast<T>().ToArray();
+            }
+
+            if (type == typeof(ushort))
+            {
+                ushort[] arr = new ushort[length];
+                for (int i = 0; i < length; i++)
+                {
+                    arr[i] = ReadUShort();
+                }
+
+                return arr.Cast<T>().ToArray();
+            }
+
+            throw new InvalidTypeException();
         }
 
         public byte[] ToArray()

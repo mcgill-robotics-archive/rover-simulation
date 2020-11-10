@@ -31,21 +31,12 @@ namespace RosSharp.RosBridgeClient.Messages
         public void Serialize(ByteArrayOutputStream ostream)
         {
             ostream.Write(TYPE_CODE);
-            ostream.Write(MotorVel.Length);
-            foreach (int i in MotorVel)
-            {
-                ostream.Write(i);
-            }
+            ostream.WriteArray(MotorVel);
         }
 
         public void Deserialize(ByteArrayInputStream istream)
         {
-            int length = istream.ReadInt();
-            MotorVel = new int[length];
-            for (int i = 0; i < length; i++)
-            {
-                MotorVel[i] = istream.ReadInt();
-            }
+            MotorVel = istream.ReadArray<int>();
         }
     }
 }

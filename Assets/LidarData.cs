@@ -33,24 +33,13 @@ namespace RosSharp.RosBridgeClient.Messages
         public void Serialize(ByteArrayOutputStream ostream)
         {
             ostream.Write(TYPE_CODE);
-            ostream.Write(distances.Length);
-            foreach (float distance in distances)
-            {
-                ostream.Write(distance);
-            }
-
+            ostream.WriteArray(distances);
             ostream.Write(angle);
         }
 
         public void Deserialize(ByteArrayInputStream istream)
         {
-            int length = istream.ReadInt();
-            distances = new float[length];
-            for (int i = 0; i < length; i++)
-            {
-                distances[i] = istream.ReadFloat();
-            }
-
+            distances = istream.ReadArray<float>();
             angle = istream.ReadFloat();
         }
     }
