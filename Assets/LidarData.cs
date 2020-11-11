@@ -2,6 +2,7 @@
 This message class is generated automatically with 'SimpleMessageGenerator' of ROS#
 */
 
+using System.Runtime.InteropServices;
 using Newtonsoft.Json;
 using RosSharp.RosBridgeClient.Messages.Geometry;
 using RosSharp.RosBridgeClient.Messages.Navigation;
@@ -16,31 +17,14 @@ namespace RosSharp.RosBridgeClient.Messages
     /// <summary>
     /// TYPE CODE: 0x01
     /// </summary>
-    public class LidarData : Message, ISerializable
+    [StructLayout(LayoutKind.Explicit, Size = 361 * sizeof(float))]
+    public unsafe struct LidarData : IMessage, IBlittable<LidarData>
     {
-        public static readonly byte TYPE_CODE = 0x01;
-        [JsonIgnore] public const string RosMessageName = "lidar/LidarData";
+        public byte TypeCode => 0x01;
 
-        public float[] distances;
+        [FieldOffset(0)]
+        public fixed float distances[360];
+        [FieldOffset(360 * sizeof(float))]
         public float angle;
-
-        public LidarData()
-        {
-            distances = new float[0];
-            angle = new float();
-        }
-
-        public void Serialize(ByteArrayOutputStream ostream)
-        {
-            ostream.Write(TYPE_CODE);
-            ostream.WriteArray(distances);
-            ostream.Write(angle);
-        }
-
-        public void Deserialize(ByteArrayInputStream istream)
-        {
-            distances = istream.ReadArray<float>();
-            angle = istream.ReadFloat();
-        }
     }
 }

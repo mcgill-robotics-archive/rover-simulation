@@ -2,6 +2,7 @@
 This message class is generated automatically with 'SimpleMessageGenerator' of ROS#
 */
 
+using System.Runtime.InteropServices;
 using Newtonsoft.Json;
 using RosSharp.RosBridgeClient.Messages.Geometry;
 using RosSharp.RosBridgeClient.Messages.Navigation;
@@ -16,27 +17,12 @@ namespace RosSharp.RosBridgeClient.Messages
     /// <summary>
     /// TYPE CODE: 0x03
     /// </summary>
-    public class WheelSpeed : Message, ISerializable
+    [StructLayout(LayoutKind.Explicit, Size = 2 * sizeof(float))]
+    public unsafe struct WheelSpeed : IMessage, IBlittable<WheelSpeed>
     {
-        public static readonly byte TYPE_CODE = 0x03;
-        [JsonIgnore] public const string RosMessageName = "DriveControl/WheelSpeed";
+        public byte TypeCode => 0x03;
 
-        public float[] Wheel_Speed;
-
-        public WheelSpeed()
-        {
-            Wheel_Speed = new float[2];
-        }
-
-        public void Serialize(ByteArrayOutputStream ostream)
-        {
-            ostream.Write(TYPE_CODE);
-            ostream.WriteArray(Wheel_Speed);
-        }
-
-        public void Deserialize(ByteArrayInputStream istream)
-        {
-            Wheel_Speed = istream.ReadArray<float>();
-        }
+        [FieldOffset(0)]
+        public fixed float WheelSpeeds[2];
     }
 }

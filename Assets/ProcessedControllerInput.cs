@@ -2,6 +2,7 @@
 This message class is generated automatically with 'SimpleMessageGenerator' of ROS#
 */
 
+using System.Runtime.InteropServices;
 using Newtonsoft.Json;
 using RosSharp.RosBridgeClient.Messages.Geometry;
 using RosSharp.RosBridgeClient.Messages.Navigation;
@@ -16,27 +17,12 @@ namespace RosSharp.RosBridgeClient.Messages
     /// <summary>
     /// TYPE_CODE 0x02
     /// </summary>
-    public class ProcessedControllerInput : Message, ISerializable
+    [StructLayout(LayoutKind.Explicit, Size = 6 * sizeof(float))]
+    public unsafe struct ProcessedControllerInput : IMessage, IBlittable<ProcessedControllerInput>
     {
-        public static readonly byte TYPE_CODE = 0x02;
-        [JsonIgnore] public const string RosMessageName = "ArmControl/ProcessedControllerInput";
+        public byte TypeCode => 0x02;
 
-        public float[] ControllerInput;
-
-        public ProcessedControllerInput()
-        {
-            ControllerInput = new float[6];
-        }
-
-        public void Serialize(ByteArrayOutputStream ostream)
-        {
-            ostream.Write(TYPE_CODE);
-            ostream.WriteArray(ControllerInput);
-        }
-
-        public void Deserialize(ByteArrayInputStream istream)
-        {
-            ControllerInput = istream.ReadArray<float>();
-        }
+        [FieldOffset(0)]
+        public fixed float ControllerInput[6];
     }
 }
