@@ -2,7 +2,9 @@
 using System.IO;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 using RosSharp.RosBridgeClient;
@@ -15,12 +17,15 @@ using Int32 = RosSharp.RosBridgeClient.Messages.Standard.Int32;
 using Random = System.Random;
 using Time = RosSharp.RosBridgeClient.Messages.Standard.Time;
 using RosString = RosSharp.RosBridgeClient.Messages.Standard.String;
+using static Assets.Scripts.Util.Native;
+using Object = UnityEngine.Object;
 
 public class RosConnection : MonoBehaviour
 {
     private RosSocket m_Socket;
     private RosConnector m_RosConnector;
     public LidarSensor lidarSensor;
+    private IDictionary<string, SubscriberCallbackTypeErased> m_TopicToCallback;
 
     public static RosSocket RosSocket
     {
@@ -35,6 +40,8 @@ public class RosConnection : MonoBehaviour
         }
     }
 
+    public static RosConnection Instance => GameObject.Find("RosConnection").GetComponent<RosConnection>();
+
 
     void Awake()
     {
@@ -48,6 +55,7 @@ public class RosConnection : MonoBehaviour
 
     void Start()
     {
+        m_TopicToCallback = new Dictionary<string, SubscriberCallbackTypeErased>();
         string urlPath = Application.persistentDataPath + "/simunity.txt";
         Debug.Log($"Reading websocket URL from {urlPath}");
         if (!File.Exists(urlPath))
@@ -74,6 +82,8 @@ public class RosConnection : MonoBehaviour
 
         m_Socket.Advertise<UInt8MultiArray>("/unity_to_ros_topic");
 
+        m_Socket.Subscribe<UInt8MultiArray>("/ros_to_unity_topic", MessageReceived);
+
         //m_Socket.Subscribe<ArmMotorCommand>("/arm_control_data", msg =>
         //{
         //    for (int i = 0; i < 6; i++)
@@ -97,6 +107,26 @@ public class RosConnection : MonoBehaviour
         //{
         //    //Debug.Log(num.Wheel_Speed);
         //});
+    }
+
+    private unsafe void MessageReceived(UInt8MultiArray arr)
+    {
+        fixed (byte* start = arr.data)
+        {
+            Debug.Assert((ulong) start % 8 == 0); // assert aligned
+            byte* head = start;
+            int topicStringLength = *(int*) head;
+            head += 4;
+            byte* topicCString = stackalloc byte[topicStringLength + 1];
+            memcpy(topicCString, head, topicStringLength + 1);
+            head += topicStringLength + 1;
+            string topic = Marshal.PtrToStringAnsi((IntPtr) topicCString);
+            Debug.Assert(topic != null);
+            if (!m_TopicToCallback.ContainsKey(topic)) return;
+            // bump the head to the next 8-byte aligned position
+            head = (byte*) RoundUp((ulong) head, 8);
+            m_TopicToCallback[topic](head);
+        }
     }
 
     private static readonly Random s_RandomInstance = new Random();
@@ -127,7 +157,7 @@ public class RosConnection : MonoBehaviour
 
 
         //m_Socket.Publish("/TestTopic", new Int32());
-        WheelSpeed speed = new WheelSpeed();
+        WheelSpeed speed;
 
         speed.WheelSpeeds[0] = 1;
         speed.WheelSpeeds[1] = 2;
@@ -156,32 +186,29 @@ public class RosConnection : MonoBehaviour
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ulong RoundUp(ulong num, ulong multiple)
+    {
+        if (num % multiple == 0)
+        {
+            return num;
+        }
+
+        return (num / multiple + 1) * multiple;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static unsafe void Publish<T>(string topic, T data) where T : unmanaged, IMessage
     {
         Publish(topic, &data);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static unsafe R reinterpret_cast<R, T>(T t) where T : unmanaged where R : unmanaged
+    private static unsafe R CopyReinterpretCast<R, T>(T t) where T : unmanaged where R : unmanaged
     {
         R* result = stackalloc R[1];
-        Buffer.MemoryCopy(&t, result, sizeof(R), sizeof(T));
+        memset(result, 0, sizeof(R)); // ECMA-334 23.9 "The content of the newly allocated memory is undefined."
+        memcpy(result, &t, Math.Min(sizeof(T), sizeof(R)));
         return *result;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static unsafe void memcpy_spaced(char* dest, byte* src, int count)
-    {
-        for (int i = 0; i < count; i++)
-        {
-            dest[i] = reinterpret_cast<char, byte>(src[i]);
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static unsafe void memcpy(void* dest, void* src, int count)
-    {
-        Buffer.MemoryCopy(src, dest, count, count);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -217,5 +244,28 @@ public class RosConnection : MonoBehaviour
         arr.data = arrData;
 
         socket.Publish("/unity_to_ros_topic", arr);
+    }
+
+    public unsafe delegate void SubscriberCallback<T>(T* msg) where T : unmanaged;
+
+    private unsafe delegate void SubscriberCallbackTypeErased(void* msg);
+
+    public static unsafe void Subscribe<T>(string topic, SubscriberCallback<T> callback) where T : unmanaged, IMessage
+    {
+        RosConnection connection = Instance;
+
+        void Func(void* msg)
+        {
+            callback((T*) msg);
+        }
+
+        connection.m_TopicToCallback[topic] = Func;
+    }
+
+    public static void RemoveSubscription(string topic)
+    {
+        RosConnection connection = Instance;
+
+        connection.m_TopicToCallback.Remove(topic);
     }
 }
