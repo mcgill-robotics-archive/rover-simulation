@@ -43,17 +43,7 @@ public class RosConnection : MonoBehaviour
     public static RosConnection Instance => GameObject.Find("RosConnection").GetComponent<RosConnection>();
 
 
-    void Awake()
-    {
-        m_RosConnector?.Awake();
-    }
-
-    void OnApplicationQuit()
-    {
-        m_RosConnector.OnApplicationQuit();
-    }
-
-    void Start()
+    unsafe void Awake()
     {
         m_TopicToCallback = new Dictionary<string, SubscriberCallbackTypeErased>();
         string urlPath = Application.persistentDataPath + "/simunity.txt";
@@ -83,6 +73,16 @@ public class RosConnection : MonoBehaviour
         m_Socket.Advertise<UInt8MultiArray>("/unity_to_ros_topic");
 
         m_Socket.Subscribe<UInt8MultiArray>("/ros_to_unity_topic", MessageReceived);
+    }
+
+    void OnApplicationQuit()
+    {
+        m_RosConnector.OnApplicationQuit();
+    }
+
+    unsafe void Start()
+    {
+        
 
         //m_Socket.Subscribe<ArmMotorCommand>("/arm_control_data", msg =>
         //{
@@ -159,9 +159,9 @@ public class RosConnection : MonoBehaviour
         //m_Socket.Publish("/TestTopic", new Int32());
         WheelSpeed speed;
 
-        speed.WheelSpeeds[0] = 1;
-        speed.WheelSpeeds[1] = 2;
-        Publish("test_topic", speed);
+        speed.WheelSpeeds[0] = 5;
+        speed.WheelSpeeds[1] = 5;
+        Publish("test_topic_wheels", speed);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -13,7 +13,7 @@ public class RoverController : MonoBehaviour
     private GameObject[] m_Wheels;
     private Pair<Pair<float, float>, DateTime> m_InputWheelSpeeds;
 
-    void Start()
+    unsafe void Start()
     {
         m_Wheels = new GameObject[4];
         m_Wheels[0] = GameObject.Find("WheelFL");
@@ -22,6 +22,11 @@ public class RoverController : MonoBehaviour
         m_Wheels[3] = GameObject.Find("WheelRR");
         m_Socket = RosConnection.RosSocket;
 
+        RosConnection.Subscribe<WheelSpeed>("test_topic_wheels", msg =>
+        {
+            float* arr = msg->WheelSpeeds;
+            Debug.Log($"Received wheel speeds {arr[0]} and {arr[1]}");
+        });
         //m_Socket.Subscribe<WheelSpeed>("/WheelSpeed", speed =>
         //{
         //    m_InputWheelSpeeds.First.First = speed.Wheel_Speed[0];
