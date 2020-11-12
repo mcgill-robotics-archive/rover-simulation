@@ -165,16 +165,6 @@ public class RosConnection : MonoBehaviour
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static unsafe void memset(void* ptr, int value, int num)
-    {
-        byte* dest = (byte*) ptr;
-        for (int i = 0; i < num; i++)
-        {
-            dest[i] = 0;
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int RoundUp(int num, int multiple)
     {
         if (num % multiple == 0)

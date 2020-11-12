@@ -26,17 +26,25 @@ namespace Assets.Scripts.Util
 
 #else
         // linux
-        private static extern void
-#endif
+        [DllImport("libc.so", EntryPoint = "memcpy"), SuppressUnmanagedCodeSecurity]
+        public static extern void memcpy(void* dest, void* src, size_t length);
 
+        [DllImport("libc.so", EntryPoint = "memset"), SuppressUnmanagedCodeSecurity]
+        public static extern void memset(void* ptr, int value, size_t num);
+#endif
+#if PLATFORM_STANDALONE_WIN
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void memcpy(void* dest, void* src, size_t length)
         {
-#if PLATFORM_STANDALONE_WIN
             RtlCopyMemory(dest, src, length);
-#else
-#endif
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void memset(void* ptr, int value, size_t num)
+        {
+            RtlFillMemory(ptr, num, value);
+        }
+#endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void memcpy(void* dest, void* src, int length)
@@ -44,14 +52,10 @@ namespace Assets.Scripts.Util
             memcpy(dest, src, (size_t) length);
         }
 
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void memset(void* ptr, int value, size_t num)
+        public static void memset(void* ptr, int value, int num)
         {
-#if PLATFORM_STANDALONE_WIN
-            RtlFillMemory(ptr, num, value);
-#else
-#endif
+            memset(ptr, value, (size_t) num);
         }
     }
 }
