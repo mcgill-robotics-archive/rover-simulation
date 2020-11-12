@@ -22,12 +22,12 @@ public class RoverController : MonoBehaviour
         m_Wheels[3] = GameObject.Find("WheelRR");
         m_Socket = RosConnection.RosSocket;
 
-        m_Socket.Subscribe<WheelSpeed>("/WheelSpeed", speed =>
-        {
-            m_InputWheelSpeeds.First.First = speed.Wheel_Speed[0];
-            m_InputWheelSpeeds.First.Second = speed.Wheel_Speed[1];
-            m_InputWheelSpeeds.Second = DateTime.Now;
-        });
+        //m_Socket.Subscribe<WheelSpeed>("/WheelSpeed", speed =>
+        //{
+        //    m_InputWheelSpeeds.First.First = speed.Wheel_Speed[0];
+        //    m_InputWheelSpeeds.First.Second = speed.Wheel_Speed[1];
+        //    m_InputWheelSpeeds.Second = DateTime.Now;
+        //});
     }
 
     void Update()
