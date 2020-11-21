@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Rover
+namespace roverstd
 {
     /// <summary>
     /// This is a Curiously Recurring Template Pattern (CRTP) interface

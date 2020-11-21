@@ -2,22 +2,26 @@
 using System.IO;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using JetBrains.Annotations;
 using UnityEngine;
 using RosSharp.RosBridgeClient;
 using RosSharp.RosBridgeClient.Messages;
 using RosSharp.RosBridgeClient.Messages.Standard;
 using RosSharp.RosBridgeClient.MessageTypes.Std;
-using Rover;
+using roverstd;
 using UnityEditor;
+using UnityEngine.Windows.Speech;
 using Int32 = RosSharp.RosBridgeClient.Messages.Standard.Int32;
 using Random = System.Random;
 using Time = RosSharp.RosBridgeClient.Messages.Standard.Time;
 using RosString = RosSharp.RosBridgeClient.Messages.Standard.String;
-using static Assets.Scripts.Util.Native;
+using static roverstd.Native;
 using Object = UnityEngine.Object;
 
 public class RosConnection : MonoBehaviour
@@ -82,9 +86,7 @@ public class RosConnection : MonoBehaviour
 
     unsafe void Start()
     {
-        
-
-        //m_Socket.Subscribe<ArmMotorCommand>("/arm_control_data", msg =>
+        //m_Socket.SubscribeUnmanaged<ArmMotorCommand>("/arm_control_data", msg =>
         //{
         //    for (int i = 0; i < 6; i++)
         //    {
@@ -98,12 +100,12 @@ public class RosConnection : MonoBehaviour
         //m_Socket.Advertise<ProcessedControllerInput>("/processed_arm_controller_input");
         //m_Socket.Advertise<WheelSpeed>("/WheelSpeed");
         //m_Socket.Advertise<WheelSpeed>("/TestTopic");
-        //m_Socket.Subscribe<WheelSpeed>("/WheelSpeed", speed =>
+        //m_Socket.SubscribeUnmanaged<WheelSpeed>("/WheelSpeed", speed =>
         //{
         //    Debug.Log(speed.Wheel_Speed[0]);
         //    Debug.Log(speed.Wheel_Speed[1]);
         //});
-        //m_Socket.Subscribe<Int32>("/TestTopic", num =>
+        //m_Socket.SubscribeUnmanaged<Int32>("/TestTopic", num =>
         //{
         //    //Debug.Log(num.Wheel_Speed);
         //});
@@ -115,8 +117,11 @@ public class RosConnection : MonoBehaviour
         {
             Debug.Assert((ulong) start % 8 == 0); // assert aligned
             byte* head = start;
+            byte typecode = *start;
+            byte isManagedType = start[1];
+            head += 8;
             int topicStringLength = *(int*) head;
-            head += 4;
+            head += sizeof(int);
             byte* topicCString = stackalloc byte[topicStringLength + 1];
             memcpy(topicCString, head, topicStringLength + 1);
             head += topicStringLength + 1;
@@ -125,7 +130,17 @@ public class RosConnection : MonoBehaviour
             if (!m_TopicToCallback.ContainsKey(topic)) return;
             // bump the head to the next 8-byte aligned position
             head = (byte*) RoundUp((ulong) head, 8);
-            m_TopicToCallback[topic](head);
+            if (isManagedType == 1)
+            {
+                ByteArrayInputStream bais = new ByteArrayInputStream(head, arr.data.Length - (head - start));
+                object o = new object();
+                // TODO
+                m_TopicToCallback[topic](o);
+            }
+            else
+            {
+                m_TopicToCallback[topic](new void_pointer(head));
+            }
         }
     }
 
@@ -139,29 +154,39 @@ public class RosConnection : MonoBehaviour
         //    randomInput[i] = (float) (s_RandomInstance.NextDouble() * 2 - 1);
         //}
 
-        //m_Socket.Publish("/processed_arm_controller_input", new ProcessedControllerInput
+        //m_Socket.PublishUnmanaged("/processed_arm_controller_input", new ProcessedControllerInput
         //{
         //    ControllerInput = randomInput
         //});
 
-        //m_Socket.Publish("/WheelSpeed", new WheelSpeed
+        //m_Socket.PublishUnmanaged("/WheelSpeed", new WheelSpeed
         //{
         //    Wheel_Speed = new[] { 5.0f, 5.0f }
         //});
 
-        //m_Socket.Publish("/LidarData", new LidarData
+        //m_Socket.PublishUnmanaged("/LidarData", new LidarData
         //{
         //    distances = lidarSensor.getCurrentDistances(),
         //    angle = lidarSensor.getCurrentAngle()
         //});
 
 
-        //m_Socket.Publish("/TestTopic", new Int32());
-        WheelSpeed speed;
+        //m_Socket.PublishUnmanaged("/TestTopic", new Int32());
 
-        speed.WheelSpeeds[0] = 5;
-        speed.WheelSpeeds[1] = 5;
-        Publish("test_topic_wheels", speed);
+        //WheelSpeed speed;
+
+        //speed.WheelSpeeds[0] = 5;
+        //speed.WheelSpeeds[1] = 5;
+        //PublishUnmanaged("test_topic_wheels", speed);
+        ArmMotorCommand cmd;
+        //memset(cmd.MotorVel, 12, sizeof(ArmMotorCommand));
+        cmd.MotorVel[0] = 10;
+        cmd.MotorVel[1] = 11;
+        cmd.MotorVel[2] = 12;
+        cmd.MotorVel[3] = 13;
+        cmd.MotorVel[4] = 14;
+        cmd.MotorVel[5] = 15;
+        PublishUnmanaged("some_topic", cmd);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -187,9 +212,44 @@ public class RosConnection : MonoBehaviour
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe void Publish<T>(string topic, T data) where T : unmanaged, IMessage
+    public static unsafe void PublishUnmanaged<T>(string topic, T data) where T : unmanaged, IMessage
     {
-        Publish(topic, &data);
+        PublishUnmanaged(topic, &data);
+    }
+
+    public static unsafe void PublishManaged<T>(string topic, T data) where T : ISerializable, IMessage
+    {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        data.Serialize(baos);
+        byte[] byteData = baos.ToArray();
+        byte[] messageBytes = new byte[SizeOf(byteData) + 8 + sizeof(int) + topic.Length + 1];
+        byte* topicBytes = stackalloc byte[topic.Length + 1];
+        memset(topicBytes, 0, topic.Length + 1);
+        fixed (char* topicStart = topic)
+        {
+            Encoding.ASCII.GetBytes(topicStart, topic.Length, topicBytes, topic.Length + 1);
+        }
+
+        fixed (byte* messageStart = messageBytes)
+        {
+            byte* head = messageStart;
+            head += 8;
+            *(int*) head = topic.Length;
+            head += sizeof(int);
+            memcpy(head, topicBytes, topic.Length + 1);
+        }
+
+        Array.Copy(byteData, 0, messageBytes, 8 + sizeof(int) + topic.Length + 1, byteData.Length);
+
+        // byte 0 to 7 are reserved for metadata
+        messageBytes[0] = data.TypeCode;
+        messageBytes[1] = 1;
+        UInt8MultiArray msg = new UInt8MultiArray
+        {
+            data = messageBytes
+        };
+        RosSocket socket = RosSocket;
+        socket.Publish("/unity_to_ros_topic", msg);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -202,16 +262,17 @@ public class RosConnection : MonoBehaviour
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe void Publish<T>(string topic, T* data) where T : unmanaged, IMessage
+    public static unsafe void PublishUnmanaged<T>(string topic, T* data) where T : unmanaged, IMessage
     {
         RosSocket socket = RosSocket;
         UInt8MultiArray arr = new UInt8MultiArray();
         // 16 bytes for the type code, then followed by the topic (8 bytes for the length, then the null terminated string), then the data
-        byte[] arrData = new byte[sizeof(ulong) + sizeof(int) + topic.Length + 1 + sizeof(T)];
+        byte[] arrData = new byte[sizeof(ulong) + sizeof(int) + topic.Length + 1 + sizeof(T) + 8];
         fixed (byte* destFixed = arrData)
         {
             Debug.Assert((ulong) destFixed % 8 == 0); // assert that the data is 8-byte aligned
-            *destFixed = data->TypeCode;
+            destFixed[0] = data->TypeCode;
+            destFixed[1] = 0;
             byte* dest = destFixed;
             dest += 8;
             int topicLength = topic.Length;
@@ -227,26 +288,41 @@ public class RosConnection : MonoBehaviour
             dest += topicLength;
             *dest = 0;
             dest++;
-
+            dest = (byte*)RoundUp((ulong) dest, 8UL);
             memcpy(dest, (byte*) data, sizeof(T));
         }
 
         arr.data = arrData;
-
+        Debug.Log((from b in arrData select b.ToString()).Aggregate("", (s, s1) => s + " " + s1));
         socket.Publish("/unity_to_ros_topic", arr);
     }
 
-    public unsafe delegate void SubscriberCallback<T>(T* msg) where T : unmanaged;
+    public unsafe delegate void SubscriberCallbackUnmanaged<T>(T* msg) where T : unmanaged;
 
-    private unsafe delegate void SubscriberCallbackTypeErased(void* msg);
+    public delegate void SubscriberCallbackManaged<in T>([NotNull] T msg) where T : ISerializable;
 
-    public static unsafe void Subscribe<T>(string topic, SubscriberCallback<T> callback) where T : unmanaged, IMessage
+    public delegate void SubscriberCallbackTypeErased([NotNull] object msg);
+
+    public static unsafe void SubscribeUnmanaged<T>(string topic, SubscriberCallbackUnmanaged<T> callbackUnmanaged) where T : unmanaged, IMessage
     {
         RosConnection connection = Instance;
 
-        void Func(void* msg)
+        void Func(object msg)
         {
-            callback((T*) msg);
+            void_pointer ptr = (void_pointer) msg;
+            callbackUnmanaged((T*) ptr);
+        }
+
+        connection.m_TopicToCallback[topic] = Func;
+    }
+
+    public static void SubscribeManaged<T>(string topic, SubscriberCallbackManaged<T> callback) where T : ISerializable
+    {
+        RosConnection connection = Instance;
+
+        void Func(object msg)
+        {
+            callback((T) msg);
         }
 
         connection.m_TopicToCallback[topic] = Func;

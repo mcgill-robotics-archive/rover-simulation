@@ -9,8 +9,7 @@ using RosSharp.RosBridgeClient.Messages.Navigation;
 using RosSharp.RosBridgeClient.Messages.Sensor;
 using RosSharp.RosBridgeClient.Messages.Standard;
 using RosSharp.RosBridgeClient.Messages.Actionlib;
-using Rover;
-using Rover.Util.IOStream;
+using roverstd;
 
 namespace RosSharp.RosBridgeClient.Messages
 {
@@ -21,6 +20,8 @@ namespace RosSharp.RosBridgeClient.Messages
     public unsafe struct LidarData : IMessage, IBlittable<LidarData>
     {
         public byte TypeCode => 0x01;
+
+        public bool IsManaged => false;
 
         [FieldOffset(0)]
         public fixed float distances[360];

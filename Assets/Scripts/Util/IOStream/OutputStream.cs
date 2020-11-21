@@ -7,9 +7,9 @@ using System.Runtime.InteropServices;
 using System.Runtime.Remoting.Contexts;
 using System.Threading;
 using JetBrains.Annotations;
-using Rover.Except;
+using roverstd;
 
-namespace Rover.Util.IOStream
+namespace roverstd
 {
     public interface IOutputStream<T>
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Rover.Except
+namespace roverstd
 {
     public class InvalidTypeException : Exception
     {

@@ -1,6 +1,6 @@
-﻿using Rover.Util.IOStream;
+﻿using roverstd;
 
-namespace Rover
+namespace roverstd
 {
     /// <summary>
     /// Implement this interface for all custom ROS message types

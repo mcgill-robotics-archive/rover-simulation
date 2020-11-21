@@ -10,8 +10,7 @@ using RosSharp.RosBridgeClient.Messages.Navigation;
 using RosSharp.RosBridgeClient.Messages.Sensor;
 using RosSharp.RosBridgeClient.Messages.Standard;
 using RosSharp.RosBridgeClient.Messages.Actionlib;
-using Rover;
-using Rover.Util.IOStream;
+using roverstd;
 
 namespace RosSharp.RosBridgeClient.Messages
 {
@@ -25,5 +24,7 @@ namespace RosSharp.RosBridgeClient.Messages
         public fixed sbyte MotorVel[6];
 
         public byte TypeCode => 0x00;
+
+        public bool IsManaged => false;
     }
 }
