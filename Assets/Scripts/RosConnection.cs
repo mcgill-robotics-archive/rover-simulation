@@ -16,6 +16,8 @@ public class RosConnection : MonoBehaviour
     private RosSocket m_Socket;
     private RosConnector m_RosConnector;
     public LidarSensor lidarSensor;
+    public GameObject lidarObject;
+    public GetAngles getLidarAngles;
 
     public static RosSocket RosSocket
     {
@@ -75,8 +77,9 @@ public class RosConnection : MonoBehaviour
             }
         });
 
-        lidarSensor = GameObject.Find("Lidar").GetComponent<LidarSensor>();
-
+        lidarObject = GameObject.Find("Lidar");
+        lidarSensor = lidarObject.GetComponent<LidarSensor>();
+        getLidarAngles = lidarObject.GetComponent<GetAngles>();
         m_Socket.Advertise<LidarData>("/LidarData");
         //m_Socket.Advertise<ProcessedControllerInput>("/processed_arm_controller_input");
         //m_Socket.Advertise<WheelSpeed>("/WheelSpeed");
@@ -111,11 +114,22 @@ public class RosConnection : MonoBehaviour
         //{
         //    Wheel_Speed = new[] { 5.0f, 5.0f }
         //});
-
+        float myPitch = getLidarAngles.getPitch();
+        Debug.Log("Pitch: " + myPitch);
+        float myRoll = getLidarAngles.getRoll();
+        Debug.Log("Roll: " + myRoll);
+        float myYaw = getLidarAngles.getYaw();
+        Debug.Log("Yaw: " + myYaw);
         m_Socket.Publish("/LidarData", new LidarData
         {
             distances = lidarSensor.getCurrentDistances(),
-            angle = lidarSensor.getCurrentAngle()
+            vertical_angle = lidarSensor.getCurrentAngle(),
+            x = getLidarAngles.getX(),
+            y = getLidarAngles.getY(),
+            z = getLidarAngles.getZ(),
+            pitch = getLidarAngles.getPitch(),
+            roll = getLidarAngles.getRoll(),
+            yaw = getLidarAngles.getYaw()
         });
 
 
