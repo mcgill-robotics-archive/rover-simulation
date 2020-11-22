@@ -86,6 +86,8 @@ public class RosConnection : MonoBehaviour
 
     unsafe void Start()
     {
+        SubscribeUnmanaged<ArmMotorCommand>("test_topic", msg => Debug.Log(msg->MotorVel[0]));
+
         //m_Socket.SubscribeUnmanaged<ArmMotorCommand>("/arm_control_data", msg =>
         //{
         //    for (int i = 0; i < 6; i++)
@@ -139,6 +141,7 @@ public class RosConnection : MonoBehaviour
             }
             else
             {
+                Debug.Log((from b in arr.data select b.ToString()).Aggregate("", (s, s1) => s + " " + s1));
                 m_TopicToCallback[topic](new void_pointer(head));
             }
         }
@@ -180,13 +183,13 @@ public class RosConnection : MonoBehaviour
         //PublishUnmanaged("test_topic_wheels", speed);
         ArmMotorCommand cmd;
         //memset(cmd.MotorVel, 12, sizeof(ArmMotorCommand));
-        cmd.MotorVel[0] = 10;
-        cmd.MotorVel[1] = 11;
-        cmd.MotorVel[2] = 12;
-        cmd.MotorVel[3] = 13;
-        cmd.MotorVel[4] = 14;
-        cmd.MotorVel[5] = 15;
-        PublishUnmanaged("some_topic", cmd);
+        //cmd.MotorVel[0] = 10;
+        //cmd.MotorVel[1] = 11;
+        //cmd.MotorVel[2] = 12;
+        //cmd.MotorVel[3] = 13;
+        //cmd.MotorVel[4] = 14;
+        //cmd.MotorVel[5] = 15;
+        //PublishUnmanaged("some_topic", cmd);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -303,6 +306,16 @@ public class RosConnection : MonoBehaviour
 
     public delegate void SubscriberCallbackTypeErased([NotNull] object msg);
 
+    [StructLayout(LayoutKind.Explicit, Size = 1)]
+    private struct SubscribeSignal : IMessage, IBlittable<SubscribeSignal>
+    {
+        public byte TypeCode => 0xFF;
+        public bool IsManaged => false;
+
+        [FieldOffset(0)]
+        public byte TypeToSubscribe;
+    }
+
     public static unsafe void SubscribeUnmanaged<T>(string topic, SubscriberCallbackUnmanaged<T> callbackUnmanaged) where T : unmanaged, IMessage
     {
         RosConnection connection = Instance;
@@ -314,6 +327,10 @@ public class RosConnection : MonoBehaviour
         }
 
         connection.m_TopicToCallback[topic] = Func;
+
+        SubscribeSignal signal;
+        signal.TypeToSubscribe = (new T()).TypeCode;
+        PublishUnmanaged(topic, &signal);
     }
 
     public static void SubscribeManaged<T>(string topic, SubscriberCallbackManaged<T> callback) where T : ISerializable
