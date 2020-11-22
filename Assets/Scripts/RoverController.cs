@@ -22,17 +22,13 @@ public class RoverController : MonoBehaviour
         m_Wheels[3] = GameObject.Find("WheelRR");
         m_Socket = RosConnection.RosSocket;
 
-        RosConnection.SubscribeUnmanaged<WheelSpeed>("test_topic_wheels", msg =>
+        RosConnection.SubscribeUnmanaged<WheelSpeed>("wheel_speed", speed =>
         {
-            float* arr = msg->WheelSpeeds;
-            Debug.Log($"Received wheel speeds {arr[0]} and {arr[1]}");
+            //Debug.Log(speed->WheelSpeeds[0]);
+            m_InputWheelSpeeds.first.first = speed->WheelSpeeds[0];
+            m_InputWheelSpeeds.first.second = speed->WheelSpeeds[1];
+            m_InputWheelSpeeds.second = DateTime.Now;
         });
-        //m_Socket.SubscribeUnmanaged<WheelSpeed>("/WheelSpeed", speed =>
-        //{
-        //    m_InputWheelSpeeds.first.first = speed.Wheel_Speed[0];
-        //    m_InputWheelSpeeds.first.second = speed.Wheel_Speed[1];
-        //    m_InputWheelSpeeds.second = DateTime.Now;
-        //});
     }
 
     void Update()

@@ -86,7 +86,7 @@ public class RosConnection : MonoBehaviour
 
     unsafe void Start()
     {
-        SubscribeUnmanaged<ArmMotorCommand>("test_topic", msg => Debug.Log(msg->MotorVel[0]));
+        //SubscribeUnmanaged<ArmMotorCommand>("test_topic", msg => Debug.Log(msg->MotorVel[0]));
 
         //m_Socket.SubscribeUnmanaged<ArmMotorCommand>("/arm_control_data", msg =>
         //{
@@ -142,6 +142,7 @@ public class RosConnection : MonoBehaviour
             else
             {
                 Debug.Log((from b in arr.data select b.ToString()).Aggregate("", (s, s1) => s + " " + s1));
+                Debug.LogWarning($"Received msg from {topic}");
                 m_TopicToCallback[topic](new void_pointer(head));
             }
         }
@@ -181,7 +182,7 @@ public class RosConnection : MonoBehaviour
         //speed.WheelSpeeds[0] = 5;
         //speed.WheelSpeeds[1] = 5;
         //PublishUnmanaged("test_topic_wheels", speed);
-        ArmMotorCommand cmd;
+        //ArmMotorCommand cmd;
         //memset(cmd.MotorVel, 12, sizeof(ArmMotorCommand));
         //cmd.MotorVel[0] = 10;
         //cmd.MotorVel[1] = 11;
@@ -190,6 +191,10 @@ public class RosConnection : MonoBehaviour
         //cmd.MotorVel[4] = 14;
         //cmd.MotorVel[5] = 15;
         //PublishUnmanaged("some_topic", cmd);
+        //WheelSpeed wheelSpeed;
+        //wheelSpeed.WheelSpeeds[0] = 5.0f;
+        //wheelSpeed.WheelSpeeds[1] = 5.0f;
+        //PublishUnmanaged("wheel_speed", &wheelSpeed);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -296,11 +301,11 @@ public class RosConnection : MonoBehaviour
         }
 
         arr.data = arrData;
-        Debug.Log((from b in arrData select b.ToString()).Aggregate("", (s, s1) => s + " " + s1));
+        //Debug.Log((from b in arrData select b.ToString()).Aggregate("", (s, s1) => s + " " + s1));
         socket.Publish("/unity_to_ros_topic", arr);
     }
 
-    public unsafe delegate void SubscriberCallbackUnmanaged<T>(T* msg) where T : unmanaged;
+    public unsafe delegate void SubscriberCallbackUnmanaged<T>([NotNull] T* msg) where T : unmanaged;
 
     public delegate void SubscriberCallbackManaged<in T>([NotNull] T msg) where T : ISerializable;
 
