@@ -80,7 +80,6 @@ public class LidarSensor : MonoBehaviour
                         if (Vector3.Angle(hit.normal, -dir) < 1.0f)
                         {
                             // bounce back
-                            Debug.LogError($"Bounce back {DateTime.Now}");
                             outOfRange = true;
                         }
                         else
