@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using UnityEngine;
 using RosSharp.RosBridgeClient;
@@ -17,6 +18,7 @@ using RosSharp.RosBridgeClient.MessageTypes.Std;
 using roverstd;
 using UnityEditor;
 using UnityEngine.Windows.Speech;
+using static RosConnection;
 using Int32 = RosSharp.RosBridgeClient.Messages.Standard.Int32;
 using Random = System.Random;
 using Time = RosSharp.RosBridgeClient.Messages.Standard.Time;
@@ -47,7 +49,7 @@ public class RosConnection : MonoBehaviour
     public static RosConnection Instance => GameObject.Find("RosConnection").GetComponent<RosConnection>();
 
 
-    unsafe void Awake()
+    void Awake()
     {
         m_TopicToCallback = new Dictionary<string, SubscriberCallbackTypeErased>();
         string urlPath = Application.persistentDataPath + "/simunity.txt";
@@ -76,7 +78,8 @@ public class RosConnection : MonoBehaviour
 
         m_Socket.Advertise<UInt8MultiArray>("/unity_to_ros_topic");
 
-        m_Socket.Subscribe<UInt8MultiArray>("/ros_to_unity_topic", MessageReceived);
+        m_Socket.Subscribe<UInt8MultiArray>("/ros_to_unity_topic",
+            array => { Task.Run(() => MessageReceived(array)); });
     }
 
     void OnApplicationQuit()
@@ -141,11 +144,14 @@ public class RosConnection : MonoBehaviour
             }
             else
             {
-                Debug.Log((from b in arr.data select b.ToString()).Aggregate("", (s, s1) => s + " " + s1));
+                Debug.Log(
+                    "Received: " + (from b in arr.data select b.ToString()).Aggregate("", (s, s1) => s + " " + s1));
                 Debug.LogWarning($"Received msg from {topic}");
                 m_TopicToCallback[topic](new void_pointer(head));
             }
         }
+
+        return;
     }
 
     private static readonly Random s_RandomInstance = new Random();
@@ -194,7 +200,7 @@ public class RosConnection : MonoBehaviour
         //WheelSpeed wheelSpeed;
         //wheelSpeed.WheelSpeeds[0] = 5.0f;
         //wheelSpeed.WheelSpeeds[1] = 5.0f;
-        //PublishUnmanaged("wheel_speed", &wheelSpeed);
+        //PublishUnmanaged("wheel_speed", wheelSpeed);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -220,44 +226,44 @@ public class RosConnection : MonoBehaviour
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe void PublishUnmanaged<T>(string topic, T data) where T : unmanaged, IMessage
-    {
-        PublishUnmanaged(topic, &data);
-    }
-
     public static unsafe void PublishManaged<T>(string topic, T data) where T : ISerializable, IMessage
     {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        data.Serialize(baos);
-        byte[] byteData = baos.ToArray();
-        byte[] messageBytes = new byte[SizeOf(byteData) + 8 + sizeof(int) + topic.Length + 1];
-        byte* topicBytes = stackalloc byte[topic.Length + 1];
-        memset(topicBytes, 0, topic.Length + 1);
-        fixed (char* topicStart = topic)
-        {
-            Encoding.ASCII.GetBytes(topicStart, topic.Length, topicBytes, topic.Length + 1);
-        }
-
-        fixed (byte* messageStart = messageBytes)
-        {
-            byte* head = messageStart;
-            head += 8;
-            *(int*) head = topic.Length;
-            head += sizeof(int);
-            memcpy(head, topicBytes, topic.Length + 1);
-        }
-
-        Array.Copy(byteData, 0, messageBytes, 8 + sizeof(int) + topic.Length + 1, byteData.Length);
-
-        // byte 0 to 7 are reserved for metadata
-        messageBytes[0] = data.TypeCode;
-        messageBytes[1] = 1;
-        UInt8MultiArray msg = new UInt8MultiArray
-        {
-            data = messageBytes
-        };
         RosSocket socket = RosSocket;
-        socket.Publish("/unity_to_ros_topic", msg);
+        Task.Run(() =>
+        {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            data.Serialize(baos);
+            byte[] byteData = baos.ToArray();
+            byte[] messageBytes = new byte[SizeOf(byteData) + 8 + sizeof(int) + topic.Length + 1];
+            byte* topicBytes = stackalloc byte[topic.Length + 1];
+            memset(topicBytes, 0, topic.Length + 1);
+            fixed (char* topicStart = topic)
+            {
+                Encoding.ASCII.GetBytes(topicStart, topic.Length, topicBytes, topic.Length + 1);
+            }
+
+            fixed (byte* messageStart = messageBytes)
+            {
+                byte* head = messageStart;
+                head += 8;
+                *(int*) head = topic.Length;
+                head += sizeof(int);
+                memcpy(head, topicBytes, topic.Length + 1);
+            }
+
+            Array.Copy(byteData, 0, messageBytes, 8 + sizeof(int) + topic.Length + 1, byteData.Length);
+
+            // byte 0 to 7 are reserved for metadata
+            messageBytes[0] = data.TypeCode;
+            messageBytes[1] = 1;
+            UInt8MultiArray msg = new UInt8MultiArray
+            {
+                data = messageBytes
+            };
+
+            lock (socket)
+                socket.Publish("/unity_to_ros_topic", msg);
+        });
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -270,39 +276,46 @@ public class RosConnection : MonoBehaviour
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe void PublishUnmanaged<T>(string topic, T* data) where T : unmanaged, IMessage
+    public static unsafe void PublishUnmanaged<T>(string topic, T dataOriginal) where T : unmanaged, IMessage
     {
         RosSocket socket = RosSocket;
-        UInt8MultiArray arr = new UInt8MultiArray();
-        // 16 bytes for the type code, then followed by the topic (8 bytes for the length, then the null terminated string), then the data
-        byte[] arrData = new byte[sizeof(ulong) + sizeof(int) + topic.Length + 1 + sizeof(T) + 8];
-        fixed (byte* destFixed = arrData)
+
+        Task.Run(() =>
         {
-            Debug.Assert((ulong) destFixed % 8 == 0); // assert that the data is 8-byte aligned
-            destFixed[0] = data->TypeCode;
-            destFixed[1] = 0;
-            byte* dest = destFixed;
-            dest += 8;
-            int topicLength = topic.Length;
-            memcpy(dest, (byte*) &topicLength, sizeof(int));
-
-            dest += sizeof(int);
-
-            fixed (byte* stringStart = Encoding.ASCII.GetBytes(topic))
+            T dataNew = dataOriginal;
+            T* data = &dataNew;
+            UInt8MultiArray arr = new UInt8MultiArray();
+            // 16 bytes for the type code, then followed by the topic (8 bytes for the length, then the null terminated string), then the data
+            byte[] arrData = new byte[sizeof(ulong) + sizeof(int) + topic.Length + 1 + sizeof(T) + 8];
+            fixed (byte* destFixed = arrData)
             {
-                memcpy(dest, stringStart, topicLength);
+                Debug.Assert((ulong) destFixed % 8 == 0); // assert that the data is 8-byte aligned
+                destFixed[0] = dataOriginal.TypeCode;
+                destFixed[1] = 0;
+                byte* dest = destFixed;
+                dest += 8;
+                int topicLength = topic.Length;
+                memcpy(dest, (byte*) &topicLength, sizeof(int));
+
+                dest += sizeof(int);
+
+                fixed (byte* stringStart = Encoding.ASCII.GetBytes(topic))
+                {
+                    memcpy(dest, stringStart, topicLength);
+                }
+
+                dest += topicLength;
+                *dest = 0;
+                dest++;
+                dest = (byte*) RoundUp((ulong) dest, 8UL);
+                memcpy(dest, (byte*) data, sizeof(T));
             }
 
-            dest += topicLength;
-            *dest = 0;
-            dest++;
-            dest = (byte*)RoundUp((ulong) dest, 8UL);
-            memcpy(dest, (byte*) data, sizeof(T));
-        }
-
-        arr.data = arrData;
-        //Debug.Log((from b in arrData select b.ToString()).Aggregate("", (s, s1) => s + " " + s1));
-        socket.Publish("/unity_to_ros_topic", arr);
+            arr.data = arrData;
+            Debug.Log("Published: " + (from b in arrData select b.ToString()).Aggregate("", (s, s1) => s + " " + s1));
+            lock (socket)
+                socket.Publish("/unity_to_ros_topic", arr);
+        });
     }
 
     public unsafe delegate void SubscriberCallbackUnmanaged<T>([NotNull] T* msg) where T : unmanaged;
@@ -317,11 +330,11 @@ public class RosConnection : MonoBehaviour
         public byte TypeCode => 0xFF;
         public bool IsManaged => false;
 
-        [FieldOffset(0)]
-        public byte TypeToSubscribe;
+        [FieldOffset(0)] public byte TypeToSubscribe;
     }
 
-    public static unsafe void SubscribeUnmanaged<T>(string topic, SubscriberCallbackUnmanaged<T> callbackUnmanaged) where T : unmanaged, IMessage
+    public static unsafe void SubscribeUnmanaged<T>(string topic, SubscriberCallbackUnmanaged<T> callbackUnmanaged)
+        where T : unmanaged, IMessage
     {
         RosConnection connection = Instance;
 
@@ -335,7 +348,7 @@ public class RosConnection : MonoBehaviour
 
         SubscribeSignal signal;
         signal.TypeToSubscribe = (new T()).TypeCode;
-        PublishUnmanaged(topic, &signal);
+        PublishUnmanaged(topic, signal);
     }
 
     public static void SubscribeManaged<T>(string topic, SubscriberCallbackManaged<T> callback) where T : ISerializable
@@ -347,13 +360,15 @@ public class RosConnection : MonoBehaviour
             callback((T) msg);
         }
 
-        connection.m_TopicToCallback[topic] = Func;
+        lock (connection.m_TopicToCallback)
+            connection.m_TopicToCallback[topic] = Func;
     }
 
     public static void RemoveSubscription(string topic)
     {
         RosConnection connection = Instance;
 
-        connection.m_TopicToCallback.Remove(topic);
+        lock (connection.m_TopicToCallback)
+            connection.m_TopicToCallback.Remove(topic);
     }
 }
