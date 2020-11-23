@@ -2,8 +2,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security;
-using UnityEditor.Build.Reporting;
-using UnityEngine.UIElements;
 
 
 namespace roverstd
@@ -106,22 +104,22 @@ namespace roverstd
 
 #else
         // linux
-        [DllImport("libc.so", EntryPoint = "memcpy"), SuppressUnmanagedCodeSecurity]
+        [DllImport("libc.so.6", EntryPoint = "memcpy"), SuppressUnmanagedCodeSecurity]
         public static extern void memcpy(void* dest, void* src, size_t length);
 
-        [DllImport("libc.so", EntryPoint = "memset"), SuppressUnmanagedCodeSecurity]
+        [DllImport("libc.so.6", EntryPoint = "memset"), SuppressUnmanagedCodeSecurity]
         public static extern void memset(void* ptr, int value, size_t num);
 
-        [DllImport("libc.so", EntryPoint = "malloc"), SuppressUnmanagedCodeSecurity]
+        [DllImport("libc.so.6", EntryPoint = "malloc"), SuppressUnmanagedCodeSecurity]
         public static extern void* malloc(size_t num);
 
-        [DllImport("libc.so", EntryPoint = "free"), SuppressUnmanagedCodeSecurity]
+        [DllImport("libc.so.6", EntryPoint = "free"), SuppressUnmanagedCodeSecurity]
         public static extern void free(void* ptr);
 
-        [DllImport("libc.so", EntryPoint = "calloc"), SuppressUnmanagedCodeSecurity]
+        [DllImport("libc.so.6", EntryPoint = "calloc"), SuppressUnmanagedCodeSecurity]
         public static extern void* calloc(size_t num, size_t size);
 
-        [DllImport("libc.so", EntryPoint = "realloc"), SuppressUnmanagedCodeSecurity]
+        [DllImport("libc.so.6", EntryPoint = "realloc"), SuppressUnmanagedCodeSecurity]
         public static extern void* realloc(void* ptr, size_t size);
 
 #endif
