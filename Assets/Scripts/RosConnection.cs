@@ -25,6 +25,7 @@ using Time = RosSharp.RosBridgeClient.Messages.Standard.Time;
 using RosString = RosSharp.RosBridgeClient.Messages.Standard.String;
 using static roverstd.Native;
 using Object = UnityEngine.Object;
+using Pose = RosSharp.RosBridgeClient.MessageTypes.Geometry.Pose;
 
 public class RosConnection : MonoBehaviour
 {
@@ -77,6 +78,8 @@ public class RosConnection : MonoBehaviour
         m_Socket = m_RosConnector.RosSocket;
 
         m_Socket.Advertise<UInt8MultiArray>("/unity_to_ros_topic");
+
+        RosConnection.RosSocket.Advertise<Pose>("rover_pose");
 
         m_Socket.Subscribe<UInt8MultiArray>("/ros_to_unity_topic",
             array => { Task.Run(() => MessageReceived(array)); });

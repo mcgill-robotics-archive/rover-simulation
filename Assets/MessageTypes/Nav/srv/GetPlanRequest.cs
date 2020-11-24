@@ -15,7 +15,7 @@ namespace RosSharp.RosBridgeClient.MessageTypes.Nav
     {
         public const string RosMessageName = "nav_msgs/GetPlan";
 
-        //  Get a plan from the current position to the goal Pose 
+        //  Get a plan from the current position to the goal PoseMessage 
         //  The start pose for the plan
         public PoseStamped start { get; set; }
         //  The final pose of the goal position

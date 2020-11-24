@@ -15,7 +15,7 @@ namespace RosSharp.RosBridgeClient.MessageTypes.Geometry
     {
         public const string RosMessageName = "geometry_msgs/PoseStamped";
 
-        //  A Pose with reference coordinate frame and timestamp
+        //  A PoseMessage with reference coordinate frame and timestamp
         public Header header { get; set; }
         public Pose pose { get; set; }
 
