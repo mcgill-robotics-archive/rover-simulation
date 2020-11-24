@@ -93,7 +93,7 @@ namespace RosSharp.RosBridgeClient
             GUILayout.Space(10);
             EditorGUILayout.BeginHorizontal();
 
-            if (GUILayout.Button("Publish Robot Description"))
+            if (GUILayout.Button("PublishUnmanaged Robot Description"))
             { 
                 SetEditorPrefs();
                 transferHandler.Transfer(protocolType, serverUrl, timeout, urdfPath, rosPackage);

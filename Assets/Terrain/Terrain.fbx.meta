@@ -3,7 +3,13 @@ guid: efb9c3884f70dcb4b963c8e60351faf3
 ModelImporter:
   serializedVersion: 20101
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: DesertTexture
+    second: {fileID: 2378354209066886228, guid: 3320fcba568a0d84b998cda2233bd311,
+      type: 3}
   materials:
     materialImportMode: 1
     materialName: 0
@@ -65,8 +71,8 @@ ModelImporter:
     secondaryUVPackMargin: 4
     useFileScale: 1
   tangentSpace:
-    normalSmoothAngle: 60
-    normalImportMode: 0
+    normalSmoothAngle: 180
+    normalImportMode: 1
     tangentImportMode: 3
     normalCalculationMode: 4
     legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0

@@ -3,12 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Remoting.Contexts;
+using System.Runtime.InteropServices;
 using System.Threading;
 using JetBrains.Annotations;
-using Rover.Except;
+using roverstd;
 
-namespace Rover.Util.IOStream
+namespace roverstd
 {
     public interface IOutputStream<T>
     {

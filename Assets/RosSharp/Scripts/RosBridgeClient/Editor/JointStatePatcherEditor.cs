@@ -34,9 +34,9 @@ namespace RosSharp.RosBridgeClient
             jointStatePatcher = (JointStatePatcher) target;
             
             GUILayout.Label("All Urdf Joints", EditorStyles.boldLabel);
-            DisplaySettingsToggle(new GUIContent("Publish Joint State", "Adds/removes a Joint State Reader on each joint."),
+            DisplaySettingsToggle(new GUIContent("PublishUnmanaged Joint State", "Adds/removes a Joint State Reader on each joint."),
                 jointStatePatcher.SetPublishJointStates);
-            DisplaySettingsToggle(new GUIContent("Subscribe Joint State", "Adds/removes a Joint State Writer on each joint."),
+            DisplaySettingsToggle(new GUIContent("SubscribeUnmanaged Joint State", "Adds/removes a Joint State Writer on each joint."),
                 jointStatePatcher.SetSubscribeJointStates);
         }
 

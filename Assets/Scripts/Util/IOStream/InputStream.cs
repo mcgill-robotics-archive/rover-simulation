@@ -2,12 +2,15 @@
 using System.CodeDom;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
-using Rover.Except;
+using Microsoft.Win32.SafeHandles;
+using roverstd;
 using UnityEngine;
 using UnityEngine.Assertions;
+using static roverstd.Native;
 
-namespace Rover.Util.IOStream
+namespace roverstd
 {
 
     public interface IInputStream<out T>
@@ -21,7 +24,7 @@ namespace Rover.Util.IOStream
         T[] ToArray();
     }
 
-    public class ByteArrayInputStream : IInputStream<byte>
+    public unsafe class ByteArrayInputStream : IInputStream<byte>
     {
         private readonly byte[] m_Array;
         private int m_NextIndex;
@@ -29,6 +32,16 @@ namespace Rover.Util.IOStream
         public ByteArrayInputStream(byte[] arr)
         {
             m_Array = arr.Clone() as byte[];
+            m_NextIndex = 0;
+        }
+
+        public ByteArrayInputStream(byte* arr, size_t size)
+        {
+            m_Array = new byte[size];
+            fixed (byte* start = m_Array)
+            {
+                memcpy(start, arr, size);
+            }
             m_NextIndex = 0;
         }
 

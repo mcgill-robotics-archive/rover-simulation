@@ -2337,18 +2337,18 @@
             </summary>
             <remarks>
             This asynchronous operation must be completed by calling the <c>EndGetContext</c> method.
-            Typically, the method is invoked by the <paramref name="callback"/> delegate.
+            Typically, the method is invoked by the <paramref name="callbackUnmanaged"/> delegate.
             </remarks>
             <returns>
             An <see cref="T:System.IAsyncResult"/> that represents the status of the asynchronous operation.
             </returns>
-            <param name="callback">
+            <param name="callbackUnmanaged">
             An <see cref="T:System.AsyncCallback"/> delegate that references the method to invoke when
             the asynchronous operation completes.
             </param>
             <param name="state">
             An <see cref="T:System.Object"/> that represents a user defined object to pass to
-            the <paramref name="callback"/> delegate.
+            the <paramref name="callbackUnmanaged"/> delegate.
             </param>
             <exception cref="T:System.InvalidOperationException">
               <para>
@@ -7244,10 +7244,10 @@
         </member>
         <member name="P:WebSocketSharp.Net.SslConfiguration.CertificateSelectionCallback">
             <summary>
-            Gets or sets the callback used to select a certificate to supply to the remote party.
+            Gets or sets the callbackUnmanaged used to select a certificate to supply to the remote party.
             </summary>
             <remarks>
-            If this callback returns <see langword="null"/>, no certificate will be supplied.
+            If this callbackUnmanaged returns <see langword="null"/>, no certificate will be supplied.
             </remarks>
             <value>
             A <see cref="T:System.Net.Security.LocalCertificateSelectionCallback"/> delegate that references the method
@@ -7257,10 +7257,10 @@
         </member>
         <member name="P:WebSocketSharp.Net.SslConfiguration.CertificateValidationCallback">
             <summary>
-            Gets or sets the callback used to validate the certificate supplied by the remote party.
+            Gets or sets the callbackUnmanaged used to validate the certificate supplied by the remote party.
             </summary>
             <remarks>
-            If this callback returns <c>true</c>, the certificate will be valid.
+            If this callbackUnmanaged returns <c>true</c>, the certificate will be valid.
             </remarks>
             <value>
             A <see cref="T:System.Net.Security.RemoteCertificateValidationCallback"/> delegate that references the method
@@ -7328,10 +7328,10 @@
         </member>
         <member name="P:WebSocketSharp.Net.ClientSslConfiguration.ClientCertificateSelectionCallback">
             <summary>
-            Gets or sets the callback used to select a client certificate to supply to the server.
+            Gets or sets the callbackUnmanaged used to select a client certificate to supply to the server.
             </summary>
             <remarks>
-            If this callback returns <see langword="null"/>, no client certificate will be supplied.
+            If this callbackUnmanaged returns <see langword="null"/>, no client certificate will be supplied.
             </remarks>
             <value>
             A <see cref="T:System.Net.Security.LocalCertificateSelectionCallback"/> delegate that references the method
@@ -7341,10 +7341,10 @@
         </member>
         <member name="P:WebSocketSharp.Net.ClientSslConfiguration.ServerCertificateValidationCallback">
             <summary>
-            Gets or sets the callback used to validate the certificate supplied by the server.
+            Gets or sets the callbackUnmanaged used to validate the certificate supplied by the server.
             </summary>
             <remarks>
-            If this callback returns <c>true</c>, the server certificate will be valid.
+            If this callbackUnmanaged returns <c>true</c>, the server certificate will be valid.
             </remarks>
             <value>
             A <see cref="T:System.Net.Security.RemoteCertificateValidationCallback"/> delegate that references the method
@@ -7411,10 +7411,10 @@
         </member>
         <member name="P:WebSocketSharp.Net.ServerSslConfiguration.ClientCertificateValidationCallback">
             <summary>
-            Gets or sets the callback used to validate the certificate supplied by the client.
+            Gets or sets the callbackUnmanaged used to validate the certificate supplied by the client.
             </summary>
             <remarks>
-            If this callback returns <c>true</c>, the client certificate will be valid.
+            If this callbackUnmanaged returns <c>true</c>, the client certificate will be valid.
             </remarks>
             <value>
             A <see cref="T:System.Net.Security.RemoteCertificateValidationCallback"/> delegate that references the method
