@@ -47,15 +47,14 @@ public class LidarSensor : MonoBehaviour
 
     async Task RayCast(int incr)
     {
-        Vector3 dir;
+        Vector3 rayOrigin = transform.position;
+        Vector3 dir = transform.rotation * Quaternion.Euler(-angle, m_Azimuts[incr], 0) * Vector3.forward;
         //print("incr "+ incr +" layer "+layer+"\n");
         int indx = incr;
         m_Azimuts[incr] = incr * m_AzimutIncrAngle;
-        dir = transform.rotation * Quaternion.Euler(-angle, m_Azimuts[incr], 0) * Vector3.forward;
 
         bool outOfRange = false;
         float distance = 0.0f;
-        Vector3 rayOrigin = transform.position;
         while (!outOfRange)
         {
             RaycastHit hit;
@@ -105,7 +104,6 @@ public class LidarSensor : MonoBehaviour
         }
 
         m_Distances[incr] = distance;
-
     }
 
     async void FixedUpdate()
