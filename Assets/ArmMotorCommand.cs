@@ -2,24 +2,29 @@
 This message class is generated automatically with 'SimpleMessageGenerator' of ROS#
 */
 
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Newtonsoft.Json;
 using RosSharp.RosBridgeClient.Messages.Geometry;
 using RosSharp.RosBridgeClient.Messages.Navigation;
 using RosSharp.RosBridgeClient.Messages.Sensor;
 using RosSharp.RosBridgeClient.Messages.Standard;
 using RosSharp.RosBridgeClient.Messages.Actionlib;
+using roverstd;
 
 namespace RosSharp.RosBridgeClient.Messages
 {
-    public class ArmMotorCommand : Message
+    /// <summary>
+    /// TYPE CODE: 0x00
+    /// </summary>
+    [StructLayout(LayoutKind.Explicit, Size = 6 * sizeof(sbyte))]
+    public unsafe struct ArmMotorCommand : IMessage, IBlittable<ArmMotorCommand>
     {
-        [JsonIgnore] public const string RosMessageName = "ArmControl/ArmMotorCommand";
+        [FieldOffset(0)]
+        public fixed sbyte MotorVel[6];
 
-        public int[] MotorVel;
+        public byte TypeCode => 0x00;
 
-        public ArmMotorCommand()
-        {
-            MotorVel = new int[6];
-        }
+        public bool IsManaged => false;
     }
 }

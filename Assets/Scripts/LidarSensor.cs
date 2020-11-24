@@ -1,10 +1,11 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class LidarSensor : MonoBehaviour
 {
-
     public float maxHorizontalRange = 360f;
     private bool sweepDirection = true; // true -> up, false -> down
     public int sweepTime = 3;
@@ -31,61 +32,114 @@ public class LidarSensor : MonoBehaviour
         m_Distances = new float[NumberOfIncrements];
         m_Azimuts = new float[NumberOfIncrements];
         m_VertIncrement = (float) (MaxAngle - MinAngle) / (float) (NumberOfLayers - 1);
-        m_AzimutIncrAngle = (float) ( maxHorizontalRange/ NumberOfIncrements);
+        m_AzimutIncrAngle = (float) (maxHorizontalRange / NumberOfIncrements);
     }
 
-    public float getCurrentAngle(){
+    public float getCurrentAngle()
+    {
         return this.angle;
     }
 
-    public float[] getCurrentDistances() {
+    public float[] getCurrentDistances()
+    {
         return this.m_Distances;
     }
-    void FixedUpdate()
+
+    async Task RayCast(int incr)
     {
-        counter += 1;
-        Vector3 fwd = new Vector3(0, 0, 1);
-        Vector3 dir;
-        RaycastHit hit;
-        int indx = 0;
+        Vector3 rayOrigin = transform.position;
+        Vector3 dir = transform.rotation * Quaternion.Euler(-angle, m_Azimuts[incr], 0) * Vector3.forward;
+        //print("incr "+ incr +" layer "+layer+"\n");
+        int indx = incr;
+        m_Azimuts[incr] = incr * m_AzimutIncrAngle;
 
-        if (angle > MaxAngle) {
-            sweepDirection = false;
-        }
-
-        if (angle < MinAngle) {
-            sweepDirection = true;
-        }
-        if (sweepDirection) {angle += (MaxAngle - MinAngle)/sweepTime * Time.deltaTime;}
-        else {angle -= (MaxAngle - MinAngle)/sweepTime * Time.deltaTime;}
-        
-        for (int incr = 0; incr < NumberOfIncrements; incr++)
+        bool outOfRange = false;
+        float distance = 0.0f;
+        while (!outOfRange)
         {
-            
-            //print("incr "+ incr +" layer "+layer+"\n");
-            indx = incr;
-            m_Azimuts[incr] = incr * m_AzimutIncrAngle;
-            dir = transform.rotation * Quaternion.Euler(-angle, m_Azimuts[incr], 0) * fwd;
-
-            if (Physics.Raycast(transform.position, dir, out hit, MaxRange))
+            RaycastHit hit;
+            if (Physics.Raycast(rayOrigin, dir, out hit, MaxRange * 2))
             {
-                m_Distances[indx] = (float) hit.distance;
-                if (DrawRaycast)
+                distance += hit.distance;
+                if (distance > MaxRange)
                 {
-                    Debug.DrawRay(transform.position, dir * hit.distance,
-                        Color.Lerp(Color.red, Color.green, hit.distance / MaxRange));
+                    distance = MaxRange;
+                    outOfRange = true;
                 }
+                else
+                {
+                    if (DrawRaycast)
+                    {
+                        Debug.DrawRay(rayOrigin, dir * hit.distance,
+                            Color.Lerp(Color.red, Color.green, hit.distance / MaxRange));
+                    }
+
+                    if (hit.collider.gameObject.CompareTag("Mirror"))
+                    {
+                        if (Vector3.Angle(hit.normal, -dir) < 1.0f)
+                        {
+                            // bounce back
+                            outOfRange = true;
+                        }
+                        else
+                        {
+                            // continue ray cast
+                            Vector3 proj = Vector3.Project(-dir, hit.normal);
+                            rayOrigin = hit.point;
+                            dir = proj - ((-dir) - proj);
+                        }
+                    }
+                    else
+                    {
+                        outOfRange = true;
+                    }
+                }
+
             }
             else
             {
-                m_Distances[indx] = 100.0f;
+                distance = MaxRange;
+                outOfRange = true;
             }
-            
         }
 
-        if (counter == 100) {
-            Debug.Log(m_Distances[1]);
-            counter = 0;
+        m_Distances[incr] = distance;
+    }
+
+    async void FixedUpdate()
+    {
+        counter += 1;
+
+        if (angle > MaxAngle)
+        {
+            sweepDirection = false;
         }
+
+        if (angle < MinAngle)
+        {
+            sweepDirection = true;
+        }
+
+        if (sweepDirection)
+        {
+            angle += (MaxAngle - MinAngle) / sweepTime * Time.deltaTime;
+        }
+        else
+        {
+            angle -= (MaxAngle - MinAngle) / sweepTime * Time.deltaTime;
+        }
+
+        Task[] tasks = new Task[NumberOfIncrements];
+        for (int incr = 0; incr < NumberOfIncrements; incr++)
+        {
+            tasks[incr] = RayCast(incr);
+        }
+
+        await Task.WhenAll(tasks);
+
+        //if (counter == 100) {
+        //    Debug.Log(m_Distances[1]);
+        //    counter = 0;
+        //}
     }
 }

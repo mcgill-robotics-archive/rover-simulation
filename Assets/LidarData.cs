@@ -1,40 +1,31 @@
 /*
 This message class is generated automatically with 'SimpleMessageGenerator' of ROS#
-*/ 
+*/
 
+using System.Runtime.InteropServices;
 using Newtonsoft.Json;
 using RosSharp.RosBridgeClient.Messages.Geometry;
 using RosSharp.RosBridgeClient.Messages.Navigation;
 using RosSharp.RosBridgeClient.Messages.Sensor;
 using RosSharp.RosBridgeClient.Messages.Standard;
 using RosSharp.RosBridgeClient.Messages.Actionlib;
+using roverstd;
 
 namespace RosSharp.RosBridgeClient.Messages
 {
-public class LidarData : Message
-{
-    [JsonIgnore] public const string RosMessageName = "lidar/LidarData";
-    public float[] distances;
-    public float vertical_angle;
-    public float yaw;
-    public float pitch;
-    public float roll;
-    public float x;
-    public float y;
-    public float z;
-    
+    /// <summary>
+    /// TYPE CODE: 0x01
+    /// </summary>
+    [StructLayout(LayoutKind.Explicit, Size = 361 * sizeof(float))]
+    public unsafe struct LidarData : IMessage, IBlittable<LidarData>
+    {
+        public byte TypeCode => 0x01;
 
-public LidarData()
-{
-    distances = new float[0];
-    vertical_angle = new float();
-    yaw = new float();
-    pitch = new float();
-    roll = new float();
-    x = new float();
-    y = new float();
-    z = new float();
-}
-}
-}
+        public bool IsManaged => false;
 
+        [FieldOffset(0)]
+        public fixed float distances[360];
+        [FieldOffset(360 * sizeof(float))]
+        public float angle;
+    }
+}

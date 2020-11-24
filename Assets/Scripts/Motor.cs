@@ -60,19 +60,44 @@ public class Motor : MonoBehaviour
         Rigidbody rb = GetComponent<Rigidbody>();
         float currentAngularSpeed = Vector3.Project(rb.angularVelocity, transform.forward).magnitude;
 
-        if (TargetAngularSpeed > 0.0f)
+        if (TargetAngularSpeed > 0.05f) // forward
         {
+            if (TargetAngularSpeed < 0.05f)
+            {
+                ApplyBrakes();
+            }
             if (currentAngularSpeed < TargetAngularSpeed)
             {
-                if (InvertRotationDirection)
-                {
-                    rb.AddRelativeTorque(new Vector3(0.0f, 0.0f, -20.0f), ForceMode.Force);
-                }
-                else
-                {
-                    rb.AddRelativeTorque(new Vector3(0.0f, 0.0f, 20.0f), ForceMode.Force);
-                }
+                rb.AddRelativeTorque(
+                    new Vector3(0.0f, 0.0f, InvertRotationDirection ? -20.0f : 20.0f),
+                    ForceMode.Force
+                );
             }
         }
+        else if (Mathf.Abs(TargetAngularSpeed) < 0.05f) // near zero target speed
+        {
+            ApplyBrakes();
+        }
+        else // backward
+        {
+            if (TargetAngularSpeed > 0.05f)
+            {
+                ApplyBrakes();
+            }
+
+            if (currentAngularSpeed < -TargetAngularSpeed)
+            {
+                rb.AddRelativeTorque(
+                    new Vector3(0.0f, 0.0f, InvertRotationDirection ? 20.0f : -20.0f),
+                    ForceMode.Force
+                );
+            }
+        }
+    }
+
+    public void ApplyBrakes()
+    {
+        Rigidbody rb = GetComponent<Rigidbody>();
+        rb.angularVelocity = new Vector3(rb.angularVelocity.x, rb.angularVelocity.y, 0.0f);
     }
 }
