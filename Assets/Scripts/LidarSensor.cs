@@ -45,7 +45,7 @@ public class LidarSensor : MonoBehaviour
         return this.m_Distances;
     }
 
-    async Task RayCast(int incr)
+    void RayCast(int incr)
     {
         Vector3 rayOrigin = transform.position;
         Vector3 dir = transform.rotation * Quaternion.Euler(-angle, m_Azimuts[incr], 0) * Vector3.forward;
@@ -94,7 +94,6 @@ public class LidarSensor : MonoBehaviour
                         outOfRange = true;
                     }
                 }
-
             }
             else
             {
@@ -129,13 +128,10 @@ public class LidarSensor : MonoBehaviour
             angle -= (MaxAngle - MinAngle) / sweepTime * Time.deltaTime;
         }
 
-        Task[] tasks = new Task[NumberOfIncrements];
         for (int incr = 0; incr < NumberOfIncrements; incr++)
         {
-            tasks[incr] = RayCast(incr);
+            RayCast(incr);
         }
-
-        await Task.WhenAll(tasks);
 
         //if (counter == 100) {
         //    Debug.Log(m_Distances[1]);

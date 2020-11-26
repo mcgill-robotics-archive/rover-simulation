@@ -1,0 +1,9 @@
+﻿#pragma kernel CSMain
+
+RWStructuredBuffer<float3> Result;
+
+[numthreads(5, 5, 1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    Result[id.x + id.y * 30] = float3(id.x, id.y, id.z);
+}

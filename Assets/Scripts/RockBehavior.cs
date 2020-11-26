@@ -17,11 +17,13 @@ public class RockBehavior : MonoBehaviour
         posRock.y = terrain.transform.position.z + size.z / 2.0f * (s_Random.Next() * 2.0f - 1.0f) * 0.8f;
 
         transform.position = new Vector3(posRock.x, 25.0f, posRock.y);
+
+        Destroy(this, 10.0f);
     }
 
     private void Update()
     {
-        if (transform.position.y < 5.0f)
+        if (transform.position.y < -5.0f)
             Destroy(gameObject);
     }
 }

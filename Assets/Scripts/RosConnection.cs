@@ -17,6 +17,7 @@ using RosSharp.RosBridgeClient.Messages.Standard;
 using RosSharp.RosBridgeClient.MessageTypes.Std;
 using roverstd;
 using UnityEditor;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Windows.Speech;
 using static RosConnection;
 using Int32 = RosSharp.RosBridgeClient.Messages.Standard.Int32;
@@ -31,8 +32,9 @@ public class RosConnection : MonoBehaviour
 {
     private RosSocket m_Socket;
     private RosConnector m_RosConnector;
-    public LidarSensor lidarSensor;
+    private LidarSensor m_LidarSensor;
     private IDictionary<string, SubscriberCallbackTypeErased> m_TopicToCallback;
+    public ComputeShader ComputeShader = default;
 
     public static RosSocket RosSocket
     {
@@ -204,6 +206,15 @@ public class RosConnection : MonoBehaviour
         wheelSpeed.WheelSpeeds[0] = 5.0f;
         wheelSpeed.WheelSpeeds[1] = 5.0f;
         PublishUnmanaged("wheel_speed", wheelSpeed);
+        //int kernelHandle = ComputeShader.FindKernel("CSMain");
+        //using (ComputeBuffer buffer = new ComputeBuffer(25, sizeof(Vector3), ComputeBufferType.Structured))
+        //{
+        //    ComputeShader.SetBuffer(kernelHandle, "Result", buffer);
+        //    ComputeShader.Dispatch(kernelHandle, 30, 30, 1);
+        //    Vector3[] result = new Vector3[25];
+        //    buffer.GetData(result);
+        //    //Debug.Log((from r in result select r.ToString()).Aggregate((s, s1) => s + s1));
+        //}
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
