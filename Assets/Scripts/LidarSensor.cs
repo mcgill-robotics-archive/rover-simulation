@@ -16,6 +16,7 @@ public class LidarSensor : MonoBehaviour
     public int NumberOfIncrements = 360;
     public float MaxRange = 100f;
     public int counter = 0;
+    private static readonly float LIDAR_DELTA_TIME = 0.05f;
     float m_VertIncrement;
     float m_AzimutIncrAngle;
 
@@ -33,6 +34,8 @@ public class LidarSensor : MonoBehaviour
         m_Azimuts = new float[NumberOfIncrements];
         m_VertIncrement = (float) (MaxAngle - MinAngle) / (float) (NumberOfLayers - 1);
         m_AzimutIncrAngle = (float) (maxHorizontalRange / NumberOfIncrements);
+
+        InvokeRepeating("DoLidarScan", 2.0f, LIDAR_DELTA_TIME);
     }
 
     public float getCurrentAngle()
@@ -105,7 +108,7 @@ public class LidarSensor : MonoBehaviour
         m_Distances[incr] = distance;
     }
 
-    void FixedUpdate()
+    private void DoLidarScan()
     {
         counter += 1;
 
@@ -121,11 +124,11 @@ public class LidarSensor : MonoBehaviour
 
         if (sweepDirection)
         {
-            angle += (MaxAngle - MinAngle) / sweepTime * Time.deltaTime;
+            angle += (MaxAngle - MinAngle) / sweepTime * LIDAR_DELTA_TIME;
         }
         else
         {
-            angle -= (MaxAngle - MinAngle) / sweepTime * Time.deltaTime;
+            angle -= (MaxAngle - MinAngle) / sweepTime * LIDAR_DELTA_TIME;
         }
 
         for (int incr = 0; incr < NumberOfIncrements; incr++)
