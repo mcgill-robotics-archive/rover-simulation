@@ -105,7 +105,7 @@ public class LidarSensor : MonoBehaviour
         m_Distances[incr] = distance;
     }
 
-    async void FixedUpdate()
+    void FixedUpdate()
     {
         counter += 1;
 
