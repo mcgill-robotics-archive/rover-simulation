@@ -710,6 +710,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   LockSprinting: 0
   Sprinting: 0
+  DepthShader: {fileID: -6465566751694194690, guid: c0d694544ff75a94780715a8446397e2,
+    type: 3}
 --- !u!65 &755455973
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1874,7 +1876,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1526822391}
-  m_LocalRotation: {x: -0.7908455, y: 0.37195903, z: 0.20685004, w: -0.43979874}
+  m_LocalRotation: {x: -0.8510127, y: 0.40025717, z: 0.14468774, w: -0.30763143}
   m_LocalPosition: {x: 292.2663, y: 107.65112, z: 13.063721}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []

@@ -19,12 +19,15 @@ public class CameraController : MonoBehaviour
     private float m_FovTarget = 70.0f;
     private DateTime m_FovAnimationStartTime;
     private bool m_DoFovAnimation;
+    public Shader DepthShader;
 
     void Start()
     {
         m_Camera = GetComponent<Camera>();
         // look at the rover
         m_Camera.transform.LookAt(GameObject.Find("Rover").transform);
+        m_Camera.depthTextureMode = DepthTextureMode.Depth;
+        m_Camera.SetReplacementShader(DepthShader, "DepthShader");
     }
 
     void Update()

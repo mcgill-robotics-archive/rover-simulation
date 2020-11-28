@@ -2,7 +2,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using RosSharp.RosBridgeClient.Messages;
 using UnityEngine;
+using static roverstd.Native;
 
 public class LidarSensor : MonoBehaviour
 {
@@ -108,7 +110,7 @@ public class LidarSensor : MonoBehaviour
         m_Distances[incr] = distance;
     }
 
-    private void DoLidarScan()
+    private unsafe void DoLidarScan()
     {
         counter += 1;
 
@@ -135,6 +137,16 @@ public class LidarSensor : MonoBehaviour
         {
             RayCast(incr);
         }
+
+        LidarData data;
+        data.angle = angle;
+        fixed (float* start = m_Distances)
+        {
+            memcpy(data.distances, start, 360 * sizeof(float));
+        }
+
+        RosConnection.PublishUnmanaged("lidar_data", data);
+
 
         //if (counter == 100) {
         //    Debug.Log(m_Distances[1]);
