@@ -229,6 +229,12 @@ public class RosConnection : MonoBehaviour
         return (num / multiple + 1) * multiple;
     }
 
+    /// <summary>
+    /// publish managed data
+    /// </summary>
+    /// <typeparam name="T">type of data to publish</typeparam>
+    /// <param name="topic">name of topic without forward slash</param>
+    /// <param name="data">the data itself</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static unsafe void PublishManaged<T>(string topic, T data) where T : ISerializable, IMessage
     {
@@ -279,6 +285,12 @@ public class RosConnection : MonoBehaviour
         return *result;
     }
 
+    /// <summary>
+    /// publish unmanaged data
+    /// </summary>
+    /// <typeparam name="T">type of data</typeparam>
+    /// <param name="topic">topic name without forward slash</param>
+    /// <param name="dataOriginal">the data itself</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static unsafe void PublishUnmanaged<T>(string topic, T dataOriginal) where T : unmanaged, IMessage
     {
@@ -337,6 +349,12 @@ public class RosConnection : MonoBehaviour
         [FieldOffset(0)] public byte TypeToSubscribe;
     }
 
+    /// <summary>
+    /// subscribe to unmanaged data
+    /// </summary>
+    /// <typeparam name="T">type name</typeparam>
+    /// <param name="topic">topic name without forward slash</param>
+    /// <param name="callbackUnmanaged">callback</param>
     public static unsafe void SubscribeUnmanaged<T>(string topic, SubscriberCallbackUnmanaged<T> callbackUnmanaged)
         where T : unmanaged, IMessage
     {

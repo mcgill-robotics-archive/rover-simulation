@@ -152,12 +152,14 @@ public unsafe class DepthCamera : MonoBehaviour
         {
             //free(m_DepthImage);
 
+            // creating the 4x4 affine transformation matrix
             Vector4 ti = -transform.up;
             Vector4 tj = transform.forward;
             Vector4 tk = -transform.right;
             Vector4 pos4 = pos;
             pos4.w = 1.0f;
             Matrix4x4 affineTransformation = new Matrix4x4(ti, tj, tk, pos4);
+            // run post processing on a separate thread
             Thread t = new Thread(() =>
             {
                 RunVertexPostProcessing(affineTransformation, m_ActiveBuffer, inc);
