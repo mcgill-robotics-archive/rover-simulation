@@ -36,18 +36,7 @@ public class RosConnection : MonoBehaviour
     private IDictionary<string, SubscriberCallbackTypeErased> m_TopicToCallback;
     public ComputeShader ComputeShader = default;
 
-    public static RosSocket RosSocket
-    {
-        get
-        {
-            RosConnection connection = GameObject.Find("RosConnection").GetComponent<RosConnection>();
-            while (connection.m_Socket == null)
-            {
-            }
-
-            return connection.m_Socket;
-        }
-    }
+    public static RosSocket RosSocket { get; set; }
 
     public static RosConnection Instance => GameObject.Find("RosConnection").GetComponent<RosConnection>();
 
@@ -78,6 +67,7 @@ public class RosConnection : MonoBehaviour
         }
 
         m_Socket = m_RosConnector.RosSocket;
+        RosSocket = m_Socket;
 
         m_Socket.Advertise<UInt8MultiArray>("/unity_to_ros_topic");
 

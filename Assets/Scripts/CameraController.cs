@@ -20,17 +20,17 @@ public class CameraController : MonoBehaviour
     private DateTime m_FovAnimationStartTime;
     private bool m_DoFovAnimation;
     public Shader DepthShader;
+    private static readonly float MAIN_CAM_DELTA_TIME = 1.0f / 60.0f;
 
     void Start()
     {
         m_Camera = GetComponent<Camera>();
         // look at the rover
         m_Camera.transform.LookAt(GameObject.Find("Rover").transform);
-        m_Camera.depthTextureMode = DepthTextureMode.Depth;
-        m_Camera.SetReplacementShader(DepthShader, "DepthShader");
+        InvokeRepeating("UpdateCamera", 0.0f, MAIN_CAM_DELTA_TIME);
     }
 
-    void Update()
+    private void UpdateCamera()
     {
         Rigidbody rb = GetComponent<Rigidbody>();
 
@@ -107,7 +107,7 @@ public class CameraController : MonoBehaviour
             }
         }
 
-        input *= 25.0f * Time.deltaTime;
+        input *= 25.0f * MAIN_CAM_DELTA_TIME;
         if (Sprinting)
         {
             input *= 2.0f;
@@ -115,8 +115,8 @@ public class CameraController : MonoBehaviour
 
         if (m_MouseLocked)
         {
-            m_Camera.transform.Rotate(Vector3.up, 300.0f * Time.deltaTime * Input.GetAxis("Mouse X"));
-            m_Camera.transform.Rotate(Vector3.right, -300.0f * Time.deltaTime * Input.GetAxis("Mouse Y"));
+            m_Camera.transform.Rotate(Vector3.up, 300.0f * MAIN_CAM_DELTA_TIME * Input.GetAxis("Mouse X"));
+            m_Camera.transform.Rotate(Vector3.right, -300.0f * MAIN_CAM_DELTA_TIME * Input.GetAxis("Mouse Y"));
             
             m_Camera.transform.Translate(new Vector3(0.0f, input.y, 0.0f), Space.World);
             m_Camera.transform.Translate(Vector3.ProjectOnPlane(m_Camera.transform.forward, Vector3.up).normalized * input.z, Space.World);

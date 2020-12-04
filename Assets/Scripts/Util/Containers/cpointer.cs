@@ -23,5 +23,18 @@ namespace roverstd
         {
             return new cpointer<T>(val);
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator bool(cpointer<T> ptr)
+        {
+            return ptr.value != null;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static cpointer<T> operator++(cpointer<T> ptr)
+        {
+            ptr.value++;
+            return ptr;
+        }
     }
 }

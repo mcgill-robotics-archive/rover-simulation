@@ -1,28 +1,242 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
+using RosSharp;
+using RosSharp.RosBridgeClient.MessageTypes.Geometry;
+using RosSharp.RosBridgeClient.MessageTypes.Sensor;
+using RosSharp.RosBridgeClient.MessageTypes.Std;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+using static roverstd.Native;
+using roverstd;
+using Quaternion = UnityEngine.Quaternion;
+using Vector3 = UnityEngine.Vector3;
 
-[ExecuteAlways]
-public class DepthCamera : MonoBehaviour
+public unsafe class DepthCamera : MonoBehaviour
 {
-    private Camera m_DepthCamera;
-    private RenderTexture m_RenderTexture;
-    public Material ShaderMaterial;
-    public RenderTexture DepthTexture;
+    public static readonly int PIXEL_COUNT_WIDTH = 200;
+    public static readonly int PIXEL_COUNT_HEIGHT = 150;
+    public static readonly float IMAGE_WIDTH = 2.0f;
+    public static readonly float IMAGE_HEIGHT = 1.5f;
+    public static readonly float IMAGE_DISTANCE = 1.0f;
+    public static readonly float PIXEL_WIDTH = (float) IMAGE_WIDTH / PIXEL_COUNT_HEIGHT;
+    public static readonly float PIXEL_HEIGHT = (float) IMAGE_HEIGHT / PIXEL_COUNT_HEIGHT;
+    public static readonly float MAX_RANGE = 100.0f;
+    public bool IsManagingExternRes { get; set; }
 
-    void Start()
+    [StructLayout(LayoutKind.Explicit, Size = 3 * sizeof(float))]
+    private struct RayCastPixel
     {
-        //m_RenderTexture = new RenderTexture(400, 300, 1);
-        //m_DepthTexture = new RenderTexture(400, 300, 1);
-        m_DepthCamera = GetComponent<Camera>();
-        m_DepthCamera.depthTextureMode = DepthTextureMode.Depth;
-        m_RenderTexture = m_DepthCamera.targetTexture;
+        [FieldOffset(0 * sizeof(float))] public Vector3 Direction;
+        [FieldOffset(3 * sizeof(float))] public Vector2 Coordinates;
     }
 
-    void Update()
+    ~DepthCamera()
     {
-        Graphics.Blit(m_RenderTexture, DepthTexture, ShaderMaterial);
-        //Graphics.Blit(m_RenderTexture, null, ShaderMaterial);
+        OnDestroy();
+    }
+
+    private double* m_ImageBuffer;
+
+    private RayCastPixel* m_CachedDirections;
+    private pair<cpointer<Vector3>, Mutex> m_BufferA;
+    private pair<cpointer<Vector3>, Mutex> m_BufferB;
+    private pair<cpointer<Vector3>, Mutex> m_ActiveBuffer;
+    public RenderTexture DepthImageTexture;
+    public Texture2D DepthTexture2D;
+
+    private bool m_UsingBufferA;
+
+    private static readonly int m_Length = PIXEL_COUNT_WIDTH * PIXEL_COUNT_HEIGHT;
+
+    private static readonly float DEPTH_CAM_DELTA_TIME = 0.2f;
+
+    private void Start()
+    {
+        RosConnection.RosSocket.Advertise<PointCloud2>("/depth_camera_point_cloud");
+
+        lock (this)
+        {
+            IsManagingExternRes = true;
+            m_CachedDirections = (RayCastPixel*) calloc(m_Length, sizeof(RayCastPixel));
+            m_BufferA.first = (Vector3*) calloc(m_Length, sizeof(Vector3));
+            m_BufferB.first = (Vector3*) calloc(m_Length, sizeof(Vector3));
+            m_BufferA.second = new Mutex();
+            m_BufferB.second = new Mutex();
+            m_ActiveBuffer = m_BufferA;
+
+            m_ImageBuffer = (double*) calloc(m_Length, sizeof(double));
+        }
+
+        m_UsingBufferA = true;
+
+        Vector3 op0 = new Vector3(-IMAGE_WIDTH / 2.0f, IMAGE_HEIGHT / 2.0f);
+        Vector3 co = new Vector3(0.0f, 0.0f, IMAGE_DISTANCE);
+        // for [2, 1]: 
+        for (int x = 0; x < PIXEL_COUNT_WIDTH; x++)
+        {
+            for (int y = 0; y < PIXEL_COUNT_HEIGHT; y++)
+            {
+                int index = y * PIXEL_COUNT_WIDTH + x;
+                RayCastPixel* pixel = m_CachedDirections + index;
+                pixel->Coordinates = new Vector2(x, y);
+                Vector3 p0p = new Vector3(x * PIXEL_WIDTH, -y * PIXEL_HEIGHT, 0.0f);
+                Vector3 op = op0 + p0p;
+                Vector3 cp = co + op;
+                pixel->Direction = cp.normalized;
+            }
+        }
+
+        InvokeRepeating("GenerateImage", 1.0f, DEPTH_CAM_DELTA_TIME);
+    }
+
+    private static readonly Quaternion CAM_ROT = Quaternion.Euler(0.0f, -90.0f, 270.0f);
+
+    private static readonly TimeSpan MAX_MUTEX_WAIT_TIME =
+        new TimeSpan(0, 0, 0, 0, (int) (DEPTH_CAM_DELTA_TIME * 0.9f * 1000.0f));
+
+    private void GenerateImage()
+    {
+        Mutex activeMutex = m_ActiveBuffer.second;
+        if (!activeMutex.WaitOne(MAX_MUTEX_WAIT_TIME)) return;
+        int inc = 0;
+        Vector3 pos = transform.position;
+        Quaternion rot = transform.rotation * CAM_ROT;
+        try
+        {
+            Vector3* ptr = m_ActiveBuffer.first.value;
+            for (int i = 0; i < m_Length; i++)
+            {
+                RayCastPixel pixel = m_CachedDirections[i];
+                RaycastHit hit;
+                Vector3 dir = rot * pixel.Direction;
+                if (Physics.Raycast(pos, dir, out hit, MAX_RANGE))
+                {
+                    Debug.DrawRay(pos, dir * hit.distance, Color.green, DEPTH_CAM_DELTA_TIME);
+                    ptr[inc] = hit.point;
+                    double ratio = (double) hit.distance / (double) MAX_RANGE;
+                    //Debug.Assert(ratio >= 0.0 && ratio <= 1.0);
+                    m_ImageBuffer[(int)pixel.Coordinates.x * PIXEL_COUNT_HEIGHT + (int)pixel.Coordinates.y] = ratio;
+                }
+                else
+                {
+                    m_ImageBuffer[(int)pixel.Coordinates.x * PIXEL_COUNT_HEIGHT + (int)pixel.Coordinates.y] = 1.0d;
+                }
+
+                //Debug.DrawLine(pos, pos + (rot * CAM_ROT) * pixel.Direction * pixel.Distance, Color.green);
+                inc++;
+            }
+
+            //for (int i = 0; i < PIXEL_COUNT_WIDTH; i++)
+            //{
+            //    for (int j = 0; j < PIXEL_COUNT_HEIGHT; j++)
+            //    {
+            //        int index = i * PIXEL_COUNT_HEIGHT + j;
+            //        m_ImageBuffer[index] = (double) index;
+            //    }
+            //}
+
+            //using (var cam = new UnmanagedMemoryStream((byte*) m_ImageBuffer, m_Length * sizeof(double)))
+            //{
+            //    using (var outFile = new FileStream($"C:\\Users\\njche\\Desktop\\Images\\IMAGE{DateTime.Now.ToBinary()}.floats", FileMode.Create))
+            //    {
+            //        cam.CopyTo(outFile);
+            //    }
+            //}
+        }
+        finally
+        {
+            //free(m_DepthImage);
+
+            Vector4 ti = -transform.up;
+            Vector4 tj = transform.forward;
+            Vector4 tk = -transform.right;
+            Vector4 pos4 = pos;
+            pos4.w = 1.0f;
+            Matrix4x4 affineTransformation = new Matrix4x4(ti, tj, tk, pos4);
+            Thread t = new Thread(() =>
+            {
+                RunVertexPostProcessing(affineTransformation, m_ActiveBuffer, inc);
+            });
+            t.Start();
+            //RenderTexture.active = DepthImageTexture;
+            //for (int i = 0; i < DepthImageTexture.width; i++)
+            //{
+            //    for (int j = 0; j < DepthImageTexture.height; j++)
+            //    {
+            //        DepthTexture2D.SetPixel(i, j, Color.blue);
+            //    }
+            //}
+            //DepthTexture2D.Apply();
+            
+            //RenderTexture.active = null;
+            m_ActiveBuffer = m_UsingBufferA ? m_BufferB : m_BufferA;
+            m_UsingBufferA = !m_UsingBufferA;
+            activeMutex.ReleaseMutex();
+            //RunVertexPostProcessing(affineTransformation, m_ActiveBuffer, inc);
+            //t.Join();
+        }
+    }
+
+    private static readonly ChannelFloat32[] ChannelFloats = new ChannelFloat32[1];
+
+    private static void RunVertexPostProcessing(Matrix4x4 transformation, pair<cpointer<Vector3>, Mutex> dataToProcess, int count)
+    {
+        if (!dataToProcess.second.WaitOne(MAX_MUTEX_WAIT_TIME)) return;
+        PointCloud2 cloud = new PointCloud2();
+        try
+        {
+            Vector3* ptr = dataToProcess.first;
+            for (int i = 0; i < count; i++)
+            {
+                Vector4 ptVec4 = ptr[i];
+                ptVec4.w = 1.0f;
+                Vector3 result = transformation * ptVec4;
+                ptr[i] = result.Unity2Ros();
+            }
+            cloud.data = new byte[count * sizeof(Vector3)];
+            fixed (byte* dataStart = cloud.data)
+            {
+                memcpy(dataStart, ptr, sizeof(Vector3) * count);
+            }
+        }
+        finally
+        {
+            dataToProcess.second.ReleaseMutex();
+            cloud.width = (uint)count;
+            cloud.height = 1;
+            cloud.is_dense = true;
+            cloud.point_step = (uint)sizeof(Vector3);
+            cloud.row_step = (uint)(count * sizeof(Vector3));
+            cloud.fields = new PointField[count];
+            PointField fieldStructure = new PointField("name", 0, PointField.FLOAT32, 3);
+            for (int i = 0; i < cloud.fields.Length; i++)
+            {
+                cloud.fields[i] = fieldStructure;
+            }
+            //RosConnection.RosSocket.Publish("/depth_camera_point_cloud", cloud);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        lock (this)
+        {
+            if (IsManagingExternRes)
+            {
+                free(m_CachedDirections);
+                free(m_BufferA.first);
+                free(m_BufferB.first);
+                m_BufferA.second.Dispose();
+                m_BufferB.second.Dispose();
+
+                free(m_ImageBuffer);
+                IsManagingExternRes = false;
+            }
+        }
     }
 }

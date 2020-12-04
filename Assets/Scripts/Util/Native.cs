@@ -102,6 +102,22 @@ namespace roverstd
         [DllImport("msvcrt.dll", EntryPoint = "realloc"), SuppressUnmanagedCodeSecurity]
         public static extern void* realloc(void* ptr, size_t size);
 
+        [DllImport("msvcrt.dll", EntryPoint = "fopen"), SuppressUnmanagedCodeSecurity]
+        public static extern void* fopen(string filename, string mode);
+
+        [DllImport("msvcrt.dll", EntryPoint = "fclose"), SuppressUnmanagedCodeSecurity]
+        public static extern int fclose(void* file);
+
+        [DllImport("msvcrt.dll", EntryPoint = "fread"), SuppressUnmanagedCodeSecurity]
+        public static extern size_t fread(void* ptr, size_t size, size_t nmemb, void* stream);
+
+        [DllImport("msvcrt.dll", EntryPoint = "fwrite"), SuppressUnmanagedCodeSecurity]
+        public static extern size_t fwrite(void* ptr, size_t size, size_t nmemb, void* stream);
+
+
+
+
+
 #else
         // linux
         [DllImport("libc.so.6", EntryPoint = "memcpy"), SuppressUnmanagedCodeSecurity]
@@ -121,6 +137,19 @@ namespace roverstd
 
         [DllImport("libc.so.6", EntryPoint = "realloc"), SuppressUnmanagedCodeSecurity]
         public static extern void* realloc(void* ptr, size_t size);
+
+        [DllImport("libc.so.6", EntryPoint = "fopen"), SuppressUnmanagedCodeSecurity]
+        public static extern void* fopen(string filename, string mode);
+
+        [DllImport("libc.so.6", EntryPoint = "fclose"), SuppressUnmanagedCodeSecurity]
+        public static extern int fclose(void* file);
+
+        [DllImport("libc.so.6", EntryPoint = "fread"), SuppressUnmanagedCodeSecurity]
+        public static extern size_t fread(void* ptr, size_t size, size_t nmemb, void* stream);
+
+        [DllImport("libc.so.6", EntryPoint = "fwrite"), SuppressUnmanagedCodeSecurity]
+        public static extern size_t fwrite(void* ptr, size_t size, size_t nmemb, void* stream);
+
 
 #endif
 #if PLATFORM_STANDALONE_WIN
