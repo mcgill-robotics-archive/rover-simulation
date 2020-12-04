@@ -118,14 +118,14 @@ public unsafe class DepthCamera : MonoBehaviour
                 {
                     Debug.DrawRay(pos, dir * hit.distance, Color.green, DEPTH_CAM_DELTA_TIME);
                     ptr[inc] = hit.point;
-                    double ratio = (double) hit.distance / (double) MAX_RANGE;
+                    //double ratio = (double) hit.distance / (double) MAX_RANGE;
                     //Debug.Assert(ratio >= 0.0 && ratio <= 1.0);
-                    m_ImageBuffer[(int)pixel.Coordinates.x * PIXEL_COUNT_HEIGHT + (int)pixel.Coordinates.y] = ratio;
+                    //m_ImageBuffer[(int)pixel.Coordinates.x * PIXEL_COUNT_HEIGHT + (int)pixel.Coordinates.y] = ratio;
                 }
-                else
-                {
-                    m_ImageBuffer[(int)pixel.Coordinates.x * PIXEL_COUNT_HEIGHT + (int)pixel.Coordinates.y] = 1.0d;
-                }
+                //else
+                //{
+                //    m_ImageBuffer[(int)pixel.Coordinates.x * PIXEL_COUNT_HEIGHT + (int)pixel.Coordinates.y] = 1.0d;
+                //}
 
                 //Debug.DrawLine(pos, pos + (rot * CAM_ROT) * pixel.Direction * pixel.Distance, Color.green);
                 inc++;
