@@ -156,9 +156,9 @@ public unsafe class DepthCamera : MonoBehaviour
             Vector4 ti = -transform.up;
             Vector4 tj = transform.forward;
             Vector4 tk = -transform.right;
-            Vector4 pos4 = pos;
-            pos4.w = 1.0f;
-            Matrix4x4 affineTransformation = new Matrix4x4(ti, tj, tk, pos4);
+            //Vector4 pos4 = pos;
+            //pos4.w = 1.0f;
+            Matrix4x4 affineTransformation = new Matrix4x4(ti, tj, tk, new Vector4(0.0f, 0.0f, 0.0f, 1.0f));
             // run post processing on a separate thread
             Thread t = new Thread(() =>
             {
@@ -215,7 +215,7 @@ public unsafe class DepthCamera : MonoBehaviour
             cloud.point_step = (uint)sizeof(Vector3);
             cloud.row_step = (uint)(count * sizeof(Vector3));
             cloud.fields = new PointField[count];
-            PointField fieldStructure = new PointField("name", 0, PointField.FLOAT32, 3);
+            PointField fieldStructure = new PointField("pos", 0, PointField.FLOAT32, 3);
             for (int i = 0; i < cloud.fields.Length; i++)
             {
                 cloud.fields[i] = fieldStructure;
