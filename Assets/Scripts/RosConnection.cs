@@ -192,10 +192,10 @@ public class RosConnection : MonoBehaviour
         //cmd.MotorVel[4] = 14;
         //cmd.MotorVel[5] = 15;
         //PublishUnmanaged("some_topic", cmd);
-        WheelSpeed wheelSpeed;
-        wheelSpeed.WheelSpeeds[0] = 5.0f;
-        wheelSpeed.WheelSpeeds[1] = 5.0f;
-        PublishUnmanaged("wheel_speed", wheelSpeed);
+        //WheelSpeed wheelSpeed;
+        //wheelSpeed.WheelSpeeds[0] = 5.0f;
+        //wheelSpeed.WheelSpeeds[1] = 5.0f;
+        //PublishUnmanaged("wheel_speed", wheelSpeed);
         //int kernelHandle = ComputeShader.FindKernel("CSMain");
         //using (ComputeBuffer buffer = new ComputeBuffer(25, sizeof(Vector3), ComputeBufferType.Structured))
         //{

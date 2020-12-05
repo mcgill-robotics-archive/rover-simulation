@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2621.462, g: 2114.8022, b: 2204.8647, a: 1}
+  m_IndirectSpecularColor: {r: 2621.5195, g: 2113.441, b: 2200.4624, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -1697,6 +1697,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   DepthImageTexture: {fileID: 8400000, guid: 241b48e0240b4984daecb8f3475ea21c, type: 2}
+  DepthTexture2D: {fileID: 0}
 --- !u!1 &1526822391
 GameObject:
   m_ObjectHideFlags: 0
