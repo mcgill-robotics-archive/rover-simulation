@@ -51,10 +51,10 @@ public class RoverController : MonoBehaviour
             m_InputWheelSpeeds = default;
         }
 
-        m_Wheels[0].GetComponent<Motor>().TargetAngularSpeedAbsolute = speeds.first.first;
-        m_Wheels[1].GetComponent<Motor>().TargetAngularSpeedAbsolute = speeds.first.first;
-        m_Wheels[2].GetComponent<Motor>().TargetAngularSpeedAbsolute = speeds.first.second;
-        m_Wheels[3].GetComponent<Motor>().TargetAngularSpeedAbsolute = speeds.first.second;
+        m_Motors[0].TargetAngularSpeedAbsolute = speeds.first.first;
+        m_Motors[1].TargetAngularSpeedAbsolute = speeds.first.first;
+        m_Motors[2].TargetAngularSpeedAbsolute = speeds.first.second;
+        m_Motors[3].TargetAngularSpeedAbsolute = speeds.first.second;
 
         // publish rover pose data from imu
         RosConnection.RosSocket.Publish("rover_pose", GetComponent<InertialMeasurementUnit>().PoseMessage);

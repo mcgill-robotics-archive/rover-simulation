@@ -30,12 +30,25 @@ namespace roverstd
             return obj is pair<T, U> other && Equals(other);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override int GetHashCode()
         {
             unchecked
             {
                 return (first.GetHashCode() * 397) ^ second.GetHashCode();
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator (T, U)(pair<T, U> pair)
+        {
+            return (pair.first, pair.second);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator pair<T, U>((T, U) tuple)
+        {
+            return new pair<T, U>(tuple.Item1, tuple.Item2);
         }
     }
 }

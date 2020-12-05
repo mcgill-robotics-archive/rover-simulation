@@ -25,7 +25,7 @@ public unsafe class DepthCamera : MonoBehaviour
     public static readonly float IMAGE_DISTANCE = 1.0f;
     public static readonly float PIXEL_WIDTH = (float) IMAGE_WIDTH / PIXEL_COUNT_HEIGHT;
     public static readonly float PIXEL_HEIGHT = (float) IMAGE_HEIGHT / PIXEL_COUNT_HEIGHT;
-    public static readonly float MAX_RANGE = 100.0f;
+    public static readonly float MAX_RANGE = 20.0f;
     public bool IsManagingExternRes { get; set; }
 
     [StructLayout(LayoutKind.Explicit, Size = 3 * sizeof(float))]
