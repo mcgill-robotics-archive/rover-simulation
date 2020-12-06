@@ -91,7 +91,7 @@ public unsafe class DepthCamera : MonoBehaviour
             }
         }
 
-        InvokeRepeating("GenerateImage", 1.0f, DEPTH_CAM_DELTA_TIME);
+        InvokeRepeating(nameof(GenerateImage), 1.0f, DEPTH_CAM_DELTA_TIME);
     }
 
     private static readonly Quaternion CAM_ROT = Quaternion.Euler(0.0f, -90.0f, 270.0f);

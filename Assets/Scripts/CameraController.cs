@@ -27,7 +27,7 @@ public class CameraController : MonoBehaviour
         m_Camera = GetComponent<Camera>();
         // look at the rover
         m_Camera.transform.LookAt(GameObject.Find("Rover").transform);
-        InvokeRepeating("UpdateCamera", 0.0f, MAIN_CAM_DELTA_TIME);
+        InvokeRepeating(nameof(UpdateCamera), 0.0f, MAIN_CAM_DELTA_TIME);
     }
 
     private void UpdateCamera()

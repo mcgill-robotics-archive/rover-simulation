@@ -32,7 +32,6 @@ public class RosConnection : MonoBehaviour
 {
     private RosSocket m_Socket;
     private RosConnector m_RosConnector;
-    private LidarSensor m_LidarSensor;
     private IDictionary<string, SubscriberCallbackTypeErased> m_TopicToCallback;
     public ComputeShader ComputeShader = default;
 

@@ -10,7 +10,7 @@ public class FpsUpdate : MonoBehaviour
     void Start()
     {
         m_FpsText = GameObject.Find("FpsDisplay");
-        InvokeRepeating("UpdateFps", 0.5f, 0.5f);
+        InvokeRepeating(nameof(UpdateFps), 0.5f, 0.5f);
     }
 
     void UpdateFps()

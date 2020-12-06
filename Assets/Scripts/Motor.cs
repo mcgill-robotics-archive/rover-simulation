@@ -41,18 +41,6 @@ public class Motor : MonoBehaviour
     {
         Rigidbody rb = GetComponent<Rigidbody>();
         rb.maxAngularVelocity = float.MaxValue;
-
-        InvokeRepeating("CheckWheelSpeed", 5.0f, 1.0f);
-    }
-
-    void CheckWheelSpeed()
-    {
-        Rigidbody rb = GetComponent<Rigidbody>();
-        float currentAngularSpeed = Vector3.Project(rb.angularVelocity, transform.forward).magnitude;
-        if (Mathf.Abs(currentAngularSpeed - Mathf.Abs(TargetAngularSpeed)) > 1.0f)
-        {
-            // Debug.LogWarning($"Wheel speed above / below from target: {currentAngularSpeed}");
-        }
     }
 
     void Update()

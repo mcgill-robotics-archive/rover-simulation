@@ -34,7 +34,7 @@ public class GPS : MonoBehaviour
     {
         RosConnection.RosSocket.Advertise<NavSatFix>("/fix");
         UpdateGPSData();
-        InvokeRepeating("PublishGPSData", 1.0f, GPS_DELTA_TIME);
+        InvokeRepeating(nameof(PublishGPSData), 1.0f, GPS_DELTA_TIME);
     }
 
     private void UpdateGPSData()
