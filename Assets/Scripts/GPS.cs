@@ -10,7 +10,7 @@ public static class EarthData
     public const double RADIUS = 6_371_000.0;
     public const double METERS_PER_DEGREE_LATITUDE = CIRCUMFERENCE / 360.0;
     public const double DEGREES_LATITUDE_PER_METER = 360.0 / CIRCUMFERENCE;
-           
+
     public const float BASE_ALTITUDE = 10.0f;
     public const double BASE_LATITUDE = 38.408125;
     public const double BASE_LONGITUDE = -110.7796288;
@@ -33,28 +33,29 @@ public class GPS : MonoBehaviour
     private void Start()
     {
         RosConnection.RosSocket.Advertise<NavSatFix>("/fix");
-        UpdateGPSData();
+        if (!OverrideGPSData)
+            UpdateGPSData();
         InvokeRepeating(nameof(PublishGPSData), 1.0f, GPS_DELTA_TIME);
     }
 
     private void UpdateGPSData()
     {
-        if (OverrideGPSData) return;
         Vector3 pos = transform.position;
 
         Altitude = pos.y + BASE_ALTITUDE;
-        Latitude = BASE_LATITUDE + (double)pos.x * DEGREES_LATITUDE_PER_METER;
-        Longitude = BASE_LONGITUDE + ((double)-pos.z) * DEGREES_LONGITUDE_PER_METER;
+        Latitude = BASE_LATITUDE + (double) pos.x * DEGREES_LATITUDE_PER_METER;
+        Longitude = BASE_LONGITUDE + ((double) -pos.z) * DEGREES_LONGITUDE_PER_METER;
     }
 
     private void PublishGPSData()
     {
-        UpdateGPSData();
+        if (!OverrideGPSData)
+            UpdateGPSData();
 
         NavSatFix navData = new NavSatFix
         {
-            altitude = Altitude, 
-            latitude = Latitude, 
+            altitude = Altitude,
+            latitude = Latitude,
             longitude = Longitude
         };
         RosConnection.RosSocket.Publish("/fix", navData);

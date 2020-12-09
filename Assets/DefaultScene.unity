@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2621.457, g: 2113.4683, b: 2200.4705, a: 1}
+  m_IndirectSpecularColor: {r: 2621.4727, g: 2113.441, b: 2200.3923, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -1698,6 +1698,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   DepthImageTexture: {fileID: 8400000, guid: 241b48e0240b4984daecb8f3475ea21c, type: 2}
   DepthTexture2D: {fileID: 0}
+--- !u!114 &1502195776
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1502195774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd384fa89340f1c42a279dad25d14c72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1526822391
 GameObject:
   m_ObjectHideFlags: 0
@@ -2846,6 +2858,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d1968aa27e2e7f4695fb8cc3debfc33, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Latitude: 38.408125
+  Longitude: -110.7796288
+  Altitude: 10
+  OverrideGPSData: 0
 --- !u!1 &1868854801
 GameObject:
   m_ObjectHideFlags: 0
