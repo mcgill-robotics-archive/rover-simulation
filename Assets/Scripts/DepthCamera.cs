@@ -13,6 +13,7 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using static roverstd.Native;
 using roverstd;
+using UnityEditor.ShaderGraph.Internal;
 using Quaternion = UnityEngine.Quaternion;
 using Vector3 = UnityEngine.Vector3;
 
@@ -57,7 +58,8 @@ public unsafe class DepthCamera : MonoBehaviour
 
     private void Start()
     {
-        RosConnection.RosSocket.Advertise<PointCloud2>("/depth_camera_point_cloud");
+        //RosConnection.RosSocket.Advertise<PointCloud>("/depth_camera_point_cloud");
+        RosConnection.RosSocket.Advertise<UInt8MultiArray>("/depth_camera_point_cloud_bytes");
 
         lock (this)
         {
@@ -117,7 +119,8 @@ public unsafe class DepthCamera : MonoBehaviour
                 if (Physics.Raycast(pos, dir, out hit, MAX_RANGE))
                 {
                     Debug.DrawRay(pos, dir * hit.distance, Color.green, DEPTH_CAM_DELTA_TIME);
-                    ptr[inc] = hit.point;
+                    
+                    ptr[inc] = transform.InverseTransformPoint(hit.point);
                     //double ratio = (double) hit.distance / (double) MAX_RANGE;
                     //Debug.Assert(ratio >= 0.0 && ratio <= 1.0);
                     //m_ImageBuffer[(int)pixel.Coordinates.x * PIXEL_COUNT_HEIGHT + (int)pixel.Coordinates.y] = ratio;
@@ -153,16 +156,20 @@ public unsafe class DepthCamera : MonoBehaviour
             //free(m_DepthImage);
 
             // creating the 4x4 affine transformation matrix
-            Vector4 ti = -transform.up;
-            Vector4 tj = transform.forward;
-            Vector4 tk = -transform.right;
+            //Vector4 ti = -transform.up;
+            //Vector4 tj = transform.forward;
+            //Vector4 tk = -transform.right;
             //Vector4 pos4 = pos;
             //pos4.w = 1.0f;
-            Matrix4x4 affineTransformation = new Matrix4x4(ti, tj, tk, new Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            //pos4 = new Vector4();
+            //Matrix4x4 affineTransformation = new Matrix4x4(ti, tj, tk, pos4);
             // run post processing on a separate thread
+            Vector3 original = new Vector3(0.0f, 0.0f, 1.0f);
+            float multiplier = original.magnitude / transform.InverseTransformVector(original).magnitude;
+            Debug.Log($"Transform Multiplier: {multiplier}");
             Thread t = new Thread(() =>
             {
-                RunVertexPostProcessing(affineTransformation, m_ActiveBuffer, inc);
+                RunVertexPostProcessing(m_ActiveBuffer, inc, multiplier);
             });
             t.Start();
             //RenderTexture.active = DepthImageTexture;
@@ -186,22 +193,26 @@ public unsafe class DepthCamera : MonoBehaviour
 
     private static readonly ChannelFloat32[] ChannelFloats = new ChannelFloat32[1];
 
-    private static void RunVertexPostProcessing(Matrix4x4 transformation, pair<cpointer<Vector3>, Mutex> dataToProcess, int count)
+    private static void RunVertexPostProcessing(pair<cpointer<Vector3>, Mutex> dataToProcess, int count, float multiplier)
     {
         if (!dataToProcess.second.WaitOne(MAX_MUTEX_WAIT_TIME)) return;
-        PointCloud2 cloud = new PointCloud2();
+        //PointCloud2 cloud = new PointCloud2();
+        UInt8MultiArray arrData = new UInt8MultiArray();
         try
         {
             Vector3* ptr = dataToProcess.first;
             for (int i = 0; i < count; i++)
             {
-                Vector4 ptVec4 = ptr[i];
-                ptVec4.w = 1.0f;
-                Vector3 result = transformation * ptVec4;
-                ptr[i] = result.Unity2Ros();
+                //Vector4 ptVec4 = ptr[i];
+                //ptVec4.w = 1.0f;
+                //Vector3 result = transformation * ptVec4;
+
+                Vector3 result = ptr[i] * multiplier;
+                result.x *= -1;
+                ptr[i] = result;
             }
-            cloud.data = new byte[count * sizeof(Vector3)];
-            fixed (byte* dataStart = cloud.data)
+            arrData.data = new byte[count * sizeof(Vector3)];
+            fixed (byte* dataStart = arrData.data)
             {
                 memcpy(dataStart, ptr, sizeof(Vector3) * count);
             }
@@ -209,18 +220,20 @@ public unsafe class DepthCamera : MonoBehaviour
         finally
         {
             dataToProcess.second.ReleaseMutex();
-            cloud.width = (uint)count;
-            cloud.height = 1;
-            cloud.is_dense = true;
-            cloud.point_step = (uint)sizeof(Vector3);
-            cloud.row_step = (uint)(count * sizeof(Vector3));
-            cloud.fields = new PointField[count];
-            PointField fieldStructure = new PointField("pos", 0, PointField.FLOAT32, 3);
-            for (int i = 0; i < cloud.fields.Length; i++)
-            {
-                cloud.fields[i] = fieldStructure;
-            }
+            //cloud.width = (uint)count;
+            //cloud.height = 1;
+            //cloud.is_dense = true;
+            //cloud.point_step = (uint)sizeof(Vector3);
+            //cloud.row_step = (uint)(count * sizeof(Vector3));
+            //cloud.fields = new PointField[count];
+            //PointField fieldStructure = new PointField("pos", 0, PointField.FLOAT32, 3);
+            //for (int i = 0; i < cloud.fields.Length; i++)
+            //{
+            //    cloud.fields[i] = fieldStructure;
+            //}
             //RosConnection.RosSocket.Publish("/depth_camera_point_cloud", cloud);
+            
+            RosConnection.RosSocket.Publish("/depth_camera_point_cloud_bytes", arrData);
         }
     }
 
