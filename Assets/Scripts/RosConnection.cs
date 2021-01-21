@@ -57,7 +57,7 @@ public class RosConnection : MonoBehaviour
 
         m_RosConnector = new RosConnector
         {
-            Protocol = RosConnector.Protocols.WebSocketNET,
+            Protocol = RosConnector.Protocols.WebSocketSharp,
             RosBridgeServerUrl = url
         };
         m_RosConnector.Awake();

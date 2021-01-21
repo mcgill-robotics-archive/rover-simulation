@@ -114,8 +114,36 @@ namespace roverstd
         [DllImport("msvcrt.dll", EntryPoint = "fwrite"), SuppressUnmanagedCodeSecurity]
         public static extern size_t fwrite(void* ptr, size_t size, size_t nmemb, void* stream);
 
+#elif PLATFORM_STANDALONE_OSX
+        [DllImport("libSystem.dylib", EntryPoint = "memcpy"), SuppressUnmanagedCodeSecurity]
+        public static extern void memcpy(void* dest, void* src, size_t length);
 
+        [DllImport("libSystem.dylib", EntryPoint = "memset"), SuppressUnmanagedCodeSecurity]
+        public static extern void memset(void* ptr, int value, size_t num);
 
+        [DllImport("libSystem.dylib", EntryPoint = "malloc"), SuppressUnmanagedCodeSecurity]
+        public static extern void* malloc(size_t num);
+
+        [DllImport("libSystem.dylib", EntryPoint = "free"), SuppressUnmanagedCodeSecurity]
+        public static extern void free(void* ptr);
+
+        [DllImport("libSystem.dylib", EntryPoint = "calloc"), SuppressUnmanagedCodeSecurity]
+        public static extern void* calloc(size_t num, size_t size);
+
+        [DllImport("libSystem.dylib", EntryPoint = "realloc"), SuppressUnmanagedCodeSecurity]
+        public static extern void* realloc(void* ptr, size_t size);
+
+        [DllImport("libSystem.dylib", EntryPoint = "fopen"), SuppressUnmanagedCodeSecurity]
+        public static extern void* fopen(string filename, string mode);
+
+        [DllImport("libSystem.dylib", EntryPoint = "fclose"), SuppressUnmanagedCodeSecurity]
+        public static extern int fclose(void* file);
+
+        [DllImport("libSystem.dylib", EntryPoint = "fread"), SuppressUnmanagedCodeSecurity]
+        public static extern size_t fread(void* ptr, size_t size, size_t nmemb, void* stream);
+
+        [DllImport("libSystem.dylib", EntryPoint = "fwrite"), SuppressUnmanagedCodeSecurity]
+        public static extern size_t fwrite(void* ptr, size_t size, size_t nmemb, void* stream);
 
 
 #else
@@ -152,6 +180,7 @@ namespace roverstd
 
 
 #endif
+
 #if PLATFORM_STANDALONE_WIN
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void memcpy(void* dest, void* src, size_t length)
