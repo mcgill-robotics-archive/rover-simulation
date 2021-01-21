@@ -449,6 +449,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: DepthCamera
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 5d26f65beaa312e43a59295c502153c1,
+        type: 3}
+      propertyPath: m_Layer
+      value: 2
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 5d26f65beaa312e43a59295c502153c1, type: 3}
 --- !u!1 &576154233
@@ -1099,6 +1104,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: WheelFR
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: ea0dc1f7cda76754a8340869ab42cd89,
+        type: 3}
+      propertyPath: m_Layer
+      value: 2
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ea0dc1f7cda76754a8340869ab42cd89, type: 3}
 --- !u!1 &1256153647 stripped
@@ -1668,6 +1678,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d234e940841a6b499d951bac37a4643, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  RaycastIgnore:
+    serializedVersion: 2
+    m_Bits: 4
 --- !u!1 &1526822391
 GameObject:
   m_ObjectHideFlags: 0
@@ -1862,6 +1875,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: WheelRL
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: ea0dc1f7cda76754a8340869ab42cd89,
+        type: 3}
+      propertyPath: m_Layer
+      value: 2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ea0dc1f7cda76754a8340869ab42cd89, type: 3}
@@ -2136,6 +2154,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: WheelRR
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: ea0dc1f7cda76754a8340869ab42cd89,
+        type: 3}
+      propertyPath: m_Layer
+      value: 2
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ea0dc1f7cda76754a8340869ab42cd89, type: 3}
 --- !u!1 &1755008849 stripped
@@ -2313,6 +2336,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: WheelFL
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: ea0dc1f7cda76754a8340869ab42cd89,
+        type: 3}
+      propertyPath: m_Layer
+      value: 2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ea0dc1f7cda76754a8340869ab42cd89, type: 3}
@@ -2625,6 +2653,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: Rover
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 3904baf7564cc1a43884382a37c72a6e,
+        type: 3}
+      propertyPath: m_Layer
+      value: 2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3904baf7564cc1a43884382a37c72a6e, type: 3}

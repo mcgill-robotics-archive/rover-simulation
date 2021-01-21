@@ -24,6 +24,7 @@ using Unity.Jobs;
 public unsafe class DepthCameraParallel : MonoBehaviour
 {
     private const int POOL_ARRAY_COUNT = 128;
+    public LayerMask RaycastIgnore;
 
     public static DepthCameraParallel Instance { get; private set; }
     
@@ -61,7 +62,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         
         for (int i = 0; i < LENGTH; i++)
         {
-            commands[i] = new RaycastCommand(posWorldToLocalRot.Item1, posWorldToLocalRot.Item3 * m_CachedDirections[i].Direction, MAX_RANGE);
+            commands[i] = new RaycastCommand(posWorldToLocalRot.Item1, posWorldToLocalRot.Item3 * m_CachedDirections[i].Direction, MAX_RANGE, ~RaycastIgnore);
         }
 
         m_RaycastCommandWorldToLocalQueue.Enqueue((commands, posWorldToLocalRot.Item2, posWorldToLocalRot.Item4));
