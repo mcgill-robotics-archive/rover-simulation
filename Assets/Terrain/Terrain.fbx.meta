@@ -8,8 +8,7 @@ ModelImporter:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
       name: DesertTexture
-    second: {fileID: 2378354209066886228, guid: 3320fcba568a0d84b998cda2233bd311,
-      type: 3}
+    second: {fileID: 2100000, guid: 4e65472ebc808a241bf2a6e91a8901f2, type: 2}
   materials:
     materialImportMode: 1
     materialName: 0
