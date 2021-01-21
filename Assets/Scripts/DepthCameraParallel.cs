@@ -30,12 +30,13 @@ public unsafe class DepthCameraParallel : MonoBehaviour
     private ArrayPool<RaycastCommand> m_RaycastCommandPool;
     private ArrayPool<RaycastHit> m_RaycastHitPool;
 
-    private ConcurrentQueue<(Vector3, Matrix4x4, Quaternion)> m_PosMatRotQueue = new ConcurrentQueue<(Vector3, Matrix4x4, Quaternion)>();
-    private ConcurrentQueue<(NativeArray<RaycastCommand>, Matrix4x4)> m_RaycastCommandWorldToLocalQueue =
-        new ConcurrentQueue<(NativeArray<RaycastCommand>, Matrix4x4)>();
-    private ConcurrentQueue<(JobHandle, NativeArray<RaycastHit>, Matrix4x4, NativeArray<RaycastCommand>, IntPtr)> m_RaycastJobResultsWorldToLocalQueue = 
-        new ConcurrentQueue<(JobHandle, NativeArray<RaycastHit>, Matrix4x4, NativeArray<RaycastCommand>, IntPtr)>();
-    private ConcurrentQueue<(NativeArray<RaycastHit>, Matrix4x4, IntPtr)> m_RaycastHitWorldToLocalQueue = new ConcurrentQueue<(NativeArray<RaycastHit>, Matrix4x4, IntPtr)>();
+    private ConcurrentQueue<(Vector3, Matrix4x4, Quaternion, ulong)> m_PosMatRotQueue = new ConcurrentQueue<(Vector3, Matrix4x4, Quaternion, ulong)>();
+    private ConcurrentQueue<(NativeArray<RaycastCommand>, Matrix4x4, ulong)> m_RaycastCommandWorldToLocalQueue =
+        new ConcurrentQueue<(NativeArray<RaycastCommand>, Matrix4x4, ulong)>();
+    private ConcurrentQueue<(JobHandle, NativeArray<RaycastHit>, Matrix4x4, NativeArray<RaycastCommand>, IntPtr, ulong)> m_RaycastJobResultsWorldToLocalQueue = 
+        new ConcurrentQueue<(JobHandle, NativeArray<RaycastHit>, Matrix4x4, NativeArray<RaycastCommand>, IntPtr, ulong)>();
+    private ConcurrentQueue<(NativeArray<RaycastHit>, Matrix4x4, IntPtr, ulong)> m_RaycastHitWorldToLocalQueue = new ConcurrentQueue<(NativeArray<RaycastHit>, Matrix4x4, IntPtr, ulong)>();
+    private ConcurrentQueue<(Vector3[], ulong)> m_PointCloudQueue = new ConcurrentQueue<(Vector3[], ulong)>();
 
     private Thread m_RaycastCommandPreparationThread;
     private Thread m_RaycastDataPostprocessingThread;
@@ -49,7 +50,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
 
     private void PrepareRaycastCommands()
     {
-        (Vector3, Matrix4x4, Quaternion) posWorldToLocalRot;
+        (Vector3, Matrix4x4, Quaternion, ulong) posWorldToLocalRot;
         bool hasNext = m_PosMatRotQueue.TryDequeue(out posWorldToLocalRot);
         if (!hasNext)
         {
@@ -63,14 +64,14 @@ public unsafe class DepthCameraParallel : MonoBehaviour
             commands[i] = new RaycastCommand(posWorldToLocalRot.Item1, posWorldToLocalRot.Item3 * m_CachedDirections[i].Direction, MAX_RANGE);
         }
 
-        m_RaycastCommandWorldToLocalQueue.Enqueue((commands, posWorldToLocalRot.Item2));
+        m_RaycastCommandWorldToLocalQueue.Enqueue((commands, posWorldToLocalRot.Item2, posWorldToLocalRot.Item4));
 
-        Debug.Log($"Finished raycast command preparation {DateTime.Now}");
+        Debug.Log($"#{posWorldToLocalRot.Item4} Finished raycast command preparation {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}");
     }
 
     private void DoParallelRaycast()
     {
-        bool hasNext = m_RaycastCommandWorldToLocalQueue.TryDequeue(out (NativeArray<RaycastCommand>, Matrix4x4) cmdWorldToLocal);
+        bool hasNext = m_RaycastCommandWorldToLocalQueue.TryDequeue(out (NativeArray<RaycastCommand>, Matrix4x4, ulong) cmdWorldToLocal);
         if (!hasNext)
         {
             return;
@@ -79,14 +80,14 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         NativeArray<RaycastHit> results = m_RaycastHitPool.ObtainArray();
         IntPtr resultsPtr = (IntPtr) results.GetUnsafePtr();
         JobHandle raycastJob = RaycastCommand.ScheduleBatch(cmdWorldToLocal.Item1, results, 100);
-        m_RaycastJobResultsWorldToLocalQueue.Enqueue((raycastJob, results, cmdWorldToLocal.Item2, cmdWorldToLocal.Item1, resultsPtr));
+        m_RaycastJobResultsWorldToLocalQueue.Enqueue((raycastJob, results, cmdWorldToLocal.Item2, cmdWorldToLocal.Item1, resultsPtr, cmdWorldToLocal.Item3));
 
-        Debug.Log($"Finished raycast scheduling {DateTime.Now}");
+        Debug.Log($"#{cmdWorldToLocal.Item3} Finished raycast scheduling {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}");
     }
 
     private void ObtainParallelRaycastResult()
     {
-        bool hasNext = m_RaycastJobResultsWorldToLocalQueue.TryPeek(out (JobHandle, NativeArray<RaycastHit>, Matrix4x4, NativeArray<RaycastCommand>, IntPtr) handleHitsWorldToLocal);
+        bool hasNext = m_RaycastJobResultsWorldToLocalQueue.TryPeek(out (JobHandle, NativeArray<RaycastHit>, Matrix4x4, NativeArray<RaycastCommand>, IntPtr, ulong) handleHitsWorldToLocal);
         if (!hasNext)
         {
             return;
@@ -102,38 +103,65 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         handle.Complete();
 
         m_RaycastCommandPool.ReturnArray(handleHitsWorldToLocal.Item4);
-        m_RaycastHitWorldToLocalQueue.Enqueue((handleHitsWorldToLocal.Item2, handleHitsWorldToLocal.Item3, handleHitsWorldToLocal.Item5));
+        m_RaycastHitWorldToLocalQueue.Enqueue((handleHitsWorldToLocal.Item2, handleHitsWorldToLocal.Item3, handleHitsWorldToLocal.Item5, handleHitsWorldToLocal.Item6));
 
-        Debug.Log($"Finished obtaining results {DateTime.Now}");
+        Debug.Log($"#{handleHitsWorldToLocal.Item6} Finished obtaining results {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}");
     }
 
     private void PostProcessRaycastResult()
     {
-        bool hasNext = m_RaycastHitWorldToLocalQueue.TryDequeue(out (NativeArray<RaycastHit>, Matrix4x4, IntPtr) hitsWorldToLocal);
+        bool hasNext = m_RaycastHitWorldToLocalQueue.TryDequeue(out (NativeArray<RaycastHit>, Matrix4x4, IntPtr, ulong) hitsWorldToLocal);
         if (!hasNext)
         {
             return;
         }
         Matrix4x4 worldToLocalMat = hitsWorldToLocal.Item2;
         RaycastHit* hits = (RaycastHit*) hitsWorldToLocal.Item3;
-        int nonZeroCount = 0;
+        List<Vector3> localPoints = new List<Vector3>(); 
         for (int i = 0; i < LENGTH; i++)
         {
             Vector3 worldHit = hits[i].point;
-            if (worldHit != Vector3.zero)
+            if (worldHit == Vector3.zero)
             {
-                nonZeroCount++;
+                continue;
             }
+
             Vector3 localPoint = worldToLocalMat.MultiplyPoint3x4(worldHit) * 30.0f;
             localPoint.x *= -1;
+            localPoints.Add(localPoint);
         }
-        Debug.Log($"Finished post processing {DateTime.Now} with {nonZeroCount} non zero point(s)");
+
+        m_PointCloudQueue.Enqueue((localPoints.ToArray(), hitsWorldToLocal.Item4));
+        Debug.Log($"#{hitsWorldToLocal.Item4} Finished post processing {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}");
 
         m_RaycastHitPool.ReturnArray(hitsWorldToLocal.Item1);
     }
 
-    public static readonly int PIXEL_COUNT_WIDTH = 200;
-    public static readonly int PIXEL_COUNT_HEIGHT = 150;
+    private void SendArrayToRos()
+    {
+        bool hasNext = m_PointCloudQueue.TryDequeue(out (Vector3[], ulong) hitsWorldToLocal);
+        if (!hasNext)
+        {
+            return;
+        }
+
+        UInt8MultiArray arr = new UInt8MultiArray();
+        arr.data = new byte[hitsWorldToLocal.Item1.Length * sizeof(Vector3)];
+
+        fixed (Vector3* vec3ArrStart = hitsWorldToLocal.Item1)
+        {
+            fixed (byte* arrStart = arr.data)
+            {
+                memcpy(arrStart, vec3ArrStart, arr.data.Length);
+            }
+        }
+
+        RosConnection.RosSocket.Publish("/depth_camera_point_cloud_bytes", arr);
+        Debug.Log($"#{hitsWorldToLocal.Item2} Finished sending array to ROS {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")} with {hitsWorldToLocal.Item1.Length} points");
+    }
+
+    public static readonly int PIXEL_COUNT_WIDTH = 100;
+    public static readonly int PIXEL_COUNT_HEIGHT = 100;
     public static readonly float IMAGE_WIDTH = 2.0f;
     public static readonly float IMAGE_HEIGHT = 1.5f;
     public static readonly float IMAGE_DISTANCE = 1.0f;
@@ -166,11 +194,8 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         //RosConnection.RosSocket.Advertise<PointCloud>("/depth_camera_point_cloud");
         RosConnection.RosSocket.Advertise<UInt8MultiArray>("/depth_camera_point_cloud_bytes");
 
-        lock (this)
-        {
-            IsManagingExternRes = true;
-            m_CachedDirections = (RayCastPixel*)calloc(LENGTH, sizeof(RayCastPixel));
-        }
+        IsManagingExternRes = true;
+        m_CachedDirections = (RayCastPixel*)calloc(LENGTH, sizeof(RayCastPixel));
 
 
         Vector3 op0 = new Vector3(-IMAGE_WIDTH / 2.0f, IMAGE_HEIGHT / 2.0f);
@@ -196,6 +221,16 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         prepJob.Schedule();
         PostProcessJob postProcessJob;
         postProcessJob.Schedule();
+
+        new Thread(() =>
+        {
+            for (;;)
+            {
+                SendArrayToRos();
+            }
+        }).Start();
+
+        InvokeRepeating(nameof(CustomUpdate), 1.0f, DEPTH_CAM_DELTA_TIME);
     }
 
     private struct PreparationJob : IJob
@@ -246,13 +281,20 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         }
     }
 
-    private void Update()
+    private ulong m_PointCloudFrameCounter = 0;
+
+    private void CustomUpdate()
     {
-        m_PosMatRotQueue.Enqueue((transform.position, transform.worldToLocalMatrix, transform.rotation * CAM_ROT));
+        if (m_PosMatRotQueue.Count < 100)
+        {
+            m_PosMatRotQueue.Enqueue((transform.position, transform.worldToLocalMatrix, transform.rotation * CAM_ROT, m_PointCloudFrameCounter));
+        }
+
         DoParallelRaycast();
         ObtainParallelRaycastResult();
         m_RaycastCommandPool.EnsureExtraCapacity();
         m_RaycastHitPool.EnsureExtraCapacity();
+        m_PointCloudFrameCounter++;
     }
 
     private static readonly Quaternion CAM_ROT = Quaternion.Euler(0.0f, -90.0f, 270.0f);
@@ -262,17 +304,14 @@ public unsafe class DepthCameraParallel : MonoBehaviour
     
     private void OnDestroy()
     {
-        lock (this)
+        if (IsManagingExternRes)
         {
-            if (IsManagingExternRes)
-            {
-                free(m_CachedDirections);
+            free(m_CachedDirections);
 
-                m_RaycastCommandPool.Dispose();
-                m_RaycastHitPool.Dispose();
+            m_RaycastCommandPool.Dispose();
+            m_RaycastHitPool.Dispose();
 
-                IsManagingExternRes = false;
-            }
+            IsManagingExternRes = false;
         }
     }
 }

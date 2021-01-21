@@ -34,8 +34,16 @@ namespace roverstd
                 {
                     m_FreeArrays.Add(new NativeArray<T>(m_LengthForEach, Allocator.Persistent));
                 }
-            }
 
+                ClearDeallocationQueue();
+            }
+        }
+
+        /// <summary>
+        /// Must be called from the main thread
+        /// </summary>
+        public void ClearDeallocationQueue()
+        {
             while (!m_DeallocationQueue.IsEmpty)
             {
                 m_DeallocationQueue.TryDequeue(out NativeArray<T> arr);
@@ -59,6 +67,8 @@ namespace roverstd
             {
                 arr.Dispose();
             }
+
+            ClearDeallocationQueue();
         }
 
         public void Dispose()

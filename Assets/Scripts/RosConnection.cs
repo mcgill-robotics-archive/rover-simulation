@@ -42,28 +42,19 @@ public class RosConnection : MonoBehaviour
 
     void Awake()
     {
+
+    }
+
+    void OnApplicationQuit()
+    {
+        m_RosConnector.OnApplicationQuit();
+    }
+
+    unsafe void Start()
+    {
         m_TopicToCallback = new Dictionary<string, SubscriberCallbackTypeErased>();
-        string urlPath = Application.persistentDataPath + "/simunity.txt";
-        Debug.Log($"Reading websocket URL from {urlPath}");
-        if (!File.Exists(urlPath))
-        {
-            using (StreamWriter writer = File.CreateText(urlPath))
-            {
-                writer.Write("ws://localhost:9090");
-            }
-        }
 
-        string url = File.ReadAllText(urlPath);
-
-        m_RosConnector = new RosConnector
-        {
-            Protocol = RosConnector.Protocols.WebSocketSharp,
-            RosBridgeServerUrl = url
-        };
-        m_RosConnector.Awake();
-        while (m_RosConnector.RosSocket == null)
-        {
-        }
+        m_RosConnector = GetComponent<RosConnector>();
 
         m_Socket = m_RosConnector.RosSocket;
         RosSocket = m_Socket;
@@ -74,15 +65,6 @@ public class RosConnection : MonoBehaviour
 
         m_Socket.Subscribe<UInt8MultiArray>("/ros_to_unity_topic",
             array => { Task.Run(() => MessageReceived(array)); });
-    }
-
-    void OnApplicationQuit()
-    {
-        m_RosConnector.OnApplicationQuit();
-    }
-
-    unsafe void Start()
-    {
         //SubscribeUnmanaged<ArmMotorCommand>("test_topic", msg => Debug.Log(msg->MotorVel[0]));
 
         //m_Socket.SubscribeUnmanaged<ArmMotorCommand>("/arm_control_data", msg =>
