@@ -16,31 +16,121 @@ using static roverstd.Native;
 using roverstd;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEditor.ShaderGraph.Internal;
+using UnityEngine.EventSystems;
 using Pose = RosSharp.RosBridgeClient.MessageTypes.Geometry.Pose;
 using Quaternion = UnityEngine.Quaternion;
 using Vector3 = UnityEngine.Vector3;
+using Unity.Jobs;
 
 public unsafe class DepthCameraParallel : MonoBehaviour
 {
     private const int POOL_ARRAY_COUNT = 128;
+
+    public static DepthCameraParallel Instance { get; private set; }
     
-    private ArrayPool<RaycastCommand> m_RaycastCommandPool = new ArrayPool<RaycastCommand>(POOL_ARRAY_COUNT, LENGTH);
+    private ArrayPool<RaycastCommand> m_RaycastCommandPool;
+    private ArrayPool<RaycastHit> m_RaycastHitPool;
 
-    private BlockingCollection<(Vector3, Matrix4x4, Quaternion)> m_PosMatRotQueue = new BlockingCollection<(Vector3, Matrix4x4, Quaternion)>();
+    private ConcurrentQueue<(Vector3, Matrix4x4, Quaternion)> m_PosMatRotQueue = new ConcurrentQueue<(Vector3, Matrix4x4, Quaternion)>();
+    private ConcurrentQueue<(NativeArray<RaycastCommand>, Matrix4x4)> m_RaycastCommandWorldToLocalQueue =
+        new ConcurrentQueue<(NativeArray<RaycastCommand>, Matrix4x4)>();
+    private ConcurrentQueue<(JobHandle, NativeArray<RaycastHit>, Matrix4x4, NativeArray<RaycastCommand>, IntPtr)> m_RaycastJobResultsWorldToLocalQueue = 
+        new ConcurrentQueue<(JobHandle, NativeArray<RaycastHit>, Matrix4x4, NativeArray<RaycastCommand>, IntPtr)>();
+    private ConcurrentQueue<(NativeArray<RaycastHit>, Matrix4x4, IntPtr)> m_RaycastHitWorldToLocalQueue = new ConcurrentQueue<(NativeArray<RaycastHit>, Matrix4x4, IntPtr)>();
 
-    private Thread m_RaycastDirectionCalculationThread;
     private Thread m_RaycastCommandPreparationThread;
     private Thread m_RaycastDataPostprocessingThread;
 
-    private void CalculateRaycastDirection()
+    private void Awake()
     {
-        // TODO use transform.worldToLocalMatrix
-        (Vector3 pos, Matrix4x4 worldToLocalMatrix, Quaternion rot) = m_PosMatRotQueue.Take();
+        Instance = this;
+        m_RaycastCommandPool = new ArrayPool<RaycastCommand>(POOL_ARRAY_COUNT, LENGTH);
+        m_RaycastHitPool = new ArrayPool<RaycastHit>(POOL_ARRAY_COUNT, LENGTH);
+    }
+
+    private void PrepareRaycastCommands()
+    {
+        (Vector3, Matrix4x4, Quaternion) posWorldToLocalRot;
+        bool hasNext = m_PosMatRotQueue.TryDequeue(out posWorldToLocalRot);
+        if (!hasNext)
+        {
+            return;
+        }
 
         NativeArray<RaycastCommand> commands = m_RaycastCommandPool.ObtainArray();
-        RaycastCommand* ptr = (RaycastCommand*) commands.GetUnsafePtr();
         
-        
+        for (int i = 0; i < LENGTH; i++)
+        {
+            commands[i] = new RaycastCommand(posWorldToLocalRot.Item1, posWorldToLocalRot.Item3 * m_CachedDirections[i].Direction, MAX_RANGE);
+        }
+
+        m_RaycastCommandWorldToLocalQueue.Enqueue((commands, posWorldToLocalRot.Item2));
+
+        Debug.Log($"Finished raycast command preparation {DateTime.Now}");
+    }
+
+    private void DoParallelRaycast()
+    {
+        bool hasNext = m_RaycastCommandWorldToLocalQueue.TryDequeue(out (NativeArray<RaycastCommand>, Matrix4x4) cmdWorldToLocal);
+        if (!hasNext)
+        {
+            return;
+        }
+
+        NativeArray<RaycastHit> results = m_RaycastHitPool.ObtainArray();
+        IntPtr resultsPtr = (IntPtr) results.GetUnsafePtr();
+        JobHandle raycastJob = RaycastCommand.ScheduleBatch(cmdWorldToLocal.Item1, results, 100);
+        m_RaycastJobResultsWorldToLocalQueue.Enqueue((raycastJob, results, cmdWorldToLocal.Item2, cmdWorldToLocal.Item1, resultsPtr));
+
+        Debug.Log($"Finished raycast scheduling {DateTime.Now}");
+    }
+
+    private void ObtainParallelRaycastResult()
+    {
+        bool hasNext = m_RaycastJobResultsWorldToLocalQueue.TryPeek(out (JobHandle, NativeArray<RaycastHit>, Matrix4x4, NativeArray<RaycastCommand>, IntPtr) handleHitsWorldToLocal);
+        if (!hasNext)
+        {
+            return;
+        }
+
+        JobHandle handle = handleHitsWorldToLocal.Item1;
+        if (!handle.IsCompleted)
+        {
+            return;
+        }
+
+        m_RaycastJobResultsWorldToLocalQueue.TryDequeue(out _);
+        handle.Complete();
+
+        m_RaycastCommandPool.ReturnArray(handleHitsWorldToLocal.Item4);
+        m_RaycastHitWorldToLocalQueue.Enqueue((handleHitsWorldToLocal.Item2, handleHitsWorldToLocal.Item3, handleHitsWorldToLocal.Item5));
+
+        Debug.Log($"Finished obtaining results {DateTime.Now}");
+    }
+
+    private void PostProcessRaycastResult()
+    {
+        bool hasNext = m_RaycastHitWorldToLocalQueue.TryDequeue(out (NativeArray<RaycastHit>, Matrix4x4, IntPtr) hitsWorldToLocal);
+        if (!hasNext)
+        {
+            return;
+        }
+        Matrix4x4 worldToLocalMat = hitsWorldToLocal.Item2;
+        RaycastHit* hits = (RaycastHit*) hitsWorldToLocal.Item3;
+        int nonZeroCount = 0;
+        for (int i = 0; i < LENGTH; i++)
+        {
+            Vector3 worldHit = hits[i].point;
+            if (worldHit != Vector3.zero)
+            {
+                nonZeroCount++;
+            }
+            Vector3 localPoint = worldToLocalMat.MultiplyPoint3x4(worldHit) * 30.0f;
+            localPoint.x *= -1;
+        }
+        Debug.Log($"Finished post processing {DateTime.Now} with {nonZeroCount} non zero point(s)");
+
+        m_RaycastHitPool.ReturnArray(hitsWorldToLocal.Item1);
     }
 
     public static readonly int PIXEL_COUNT_WIDTH = 200;
@@ -65,16 +155,8 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         OnDestroy();
     }
 
-    private double* m_ImageBuffer;
 
     private RayCastPixel* m_CachedDirections;
-    private pair<cpointer<Vector3>, Mutex> m_BufferA;
-    private pair<cpointer<Vector3>, Mutex> m_BufferB;
-    private pair<cpointer<Vector3>, Mutex> m_ActiveBuffer;
-    public RenderTexture DepthImageTexture;
-    public Texture2D DepthTexture2D;
-
-    private bool m_UsingBufferA;
 
     private static readonly int LENGTH = PIXEL_COUNT_WIDTH * PIXEL_COUNT_HEIGHT;
 
@@ -89,16 +171,8 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         {
             IsManagingExternRes = true;
             m_CachedDirections = (RayCastPixel*)calloc(LENGTH, sizeof(RayCastPixel));
-            m_BufferA.first = (Vector3*)calloc(LENGTH, sizeof(Vector3));
-            m_BufferB.first = (Vector3*)calloc(LENGTH, sizeof(Vector3));
-            m_BufferA.second = new Mutex();
-            m_BufferB.second = new Mutex();
-            m_ActiveBuffer = m_BufferA;
-
-            m_ImageBuffer = (double*)calloc(LENGTH, sizeof(double));
         }
 
-        m_UsingBufferA = true;
 
         Vector3 op0 = new Vector3(-IMAGE_WIDTH / 2.0f, IMAGE_HEIGHT / 2.0f);
         Vector3 co = new Vector3(0.0f, 0.0f, IMAGE_DISTANCE);
@@ -117,150 +191,76 @@ public unsafe class DepthCameraParallel : MonoBehaviour
             }
         }
 
-        InvokeRepeating(nameof(GenerateImage), 1.0f, DEPTH_CAM_DELTA_TIME);
+        //InvokeRepeating(nameof(GenerateImage), 1.0f, DEPTH_CAM_DELTA_TIME);
+
+        PreparationJob prepJob;
+        prepJob.Schedule();
+        PostProcessJob postProcessJob;
+        postProcessJob.Schedule();
+    }
+
+    private struct PreparationJob : IJob
+    {
+        public void Execute()
+        {
+            DepthCameraParallel cam = DepthCameraParallel.Instance;
+            for (;;)
+            {
+                cam.PrepareRaycastCommands();
+            }
+        }
+    }
+
+    private struct ScheduleRaycastJob : IJob
+    {
+        public void Execute()
+        {
+            DepthCameraParallel cam = Instance;
+            for (;;)
+            {
+                cam.DoParallelRaycast();
+            }
+        }
+    }
+
+    private struct GetRaycastResultJob : IJob
+    {
+        public void Execute()
+        {
+            DepthCameraParallel cam = Instance;
+            for (;;)
+            {
+                cam.ObtainParallelRaycastResult();
+            }
+        }
+    }
+
+    private struct PostProcessJob : IJob
+    {
+        public void Execute()
+        {
+            DepthCameraParallel cam = DepthCameraParallel.Instance;
+            for (;;)
+            {
+                cam.PostProcessRaycastResult();
+            }
+        }
+    }
+
+    private void Update()
+    {
+        m_PosMatRotQueue.Enqueue((transform.position, transform.worldToLocalMatrix, transform.rotation * CAM_ROT));
+        DoParallelRaycast();
+        ObtainParallelRaycastResult();
+        m_RaycastCommandPool.EnsureExtraCapacity();
+        m_RaycastHitPool.EnsureExtraCapacity();
     }
 
     private static readonly Quaternion CAM_ROT = Quaternion.Euler(0.0f, -90.0f, 270.0f);
 
     private static readonly TimeSpan MAX_MUTEX_WAIT_TIME =
         new TimeSpan(0, 0, 0, 0, (int)(DEPTH_CAM_DELTA_TIME * 0.9f * 1000.0f));
-
-    private void GenerateImage()
-    {
-        Mutex activeMutex = m_ActiveBuffer.second;
-        if (!activeMutex.WaitOne(MAX_MUTEX_WAIT_TIME)) return;
-        int inc = 0;
-        Vector3 pos = transform.position;
-        Quaternion rot = transform.rotation * CAM_ROT;
-        try
-        {
-            Vector3* ptr = m_ActiveBuffer.first.value;
-            for (int i = 0; i < LENGTH; i++)
-            {
-                RayCastPixel pixel = m_CachedDirections[i];
-                RaycastHit hit;
-                Vector3 dir = rot * pixel.Direction;
-                if (Physics.Raycast(pos, dir, out hit, MAX_RANGE))
-                {
-                    Debug.DrawRay(pos, dir * hit.distance, Color.green, DEPTH_CAM_DELTA_TIME);
-
-                    ptr[inc] = transform.InverseTransformPoint(hit.point);
-                    //double ratio = (double) hit.distance / (double) MAX_RANGE;
-                    //Debug.Assert(ratio >= 0.0 && ratio <= 1.0);
-                    //m_ImageBuffer[(int)pixel.Coordinates.x * PIXEL_COUNT_HEIGHT + (int)pixel.Coordinates.y] = ratio;
-                }
-                //else
-                //{
-                //    m_ImageBuffer[(int)pixel.Coordinates.x * PIXEL_COUNT_HEIGHT + (int)pixel.Coordinates.y] = 1.0d;
-                //}
-
-                //Debug.DrawLine(pos, pos + (rot * CAM_ROT) * pixel.Direction * pixel.Distance, Color.green);
-                inc++;
-            }
-
-            //for (int i = 0; i < PIXEL_COUNT_WIDTH; i++)
-            //{
-            //    for (int j = 0; j < PIXEL_COUNT_HEIGHT; j++)
-            //    {
-            //        int index = i * PIXEL_COUNT_HEIGHT + j;
-            //        m_ImageBuffer[index] = (double) index;
-            //    }
-            //}
-
-            //using (var cam = new UnmanagedMemoryStream((byte*) m_ImageBuffer, LENGTH * sizeof(double)))
-            //{
-            //    using (var outFile = new FileStream($"C:\\Users\\njche\\Desktop\\Images\\IMAGE{DateTime.Now.ToBinary()}.floats", FileMode.Create))
-            //    {
-            //        cam.CopyTo(outFile);
-            //    }
-            //}
-        }
-        finally
-        {
-            //free(m_DepthImage);
-
-            // creating the 4x4 affine transformation matrix
-            //Vector4 ti = -transform.up;
-            //Vector4 tj = transform.forward;
-            //Vector4 tk = -transform.right;
-            //Vector4 pos4 = pos;
-            //pos4.w = 1.0f;
-            //pos4 = new Vector4();
-            //Matrix4x4 affineTransformation = new Matrix4x4(ti, tj, tk, pos4);
-            // run post processing on a separate thread
-            Vector3 original = new Vector3(0.0f, 0.0f, 1.0f);
-            float multiplier = original.magnitude / transform.InverseTransformVector(original).magnitude;
-            Debug.Log($"Transform Multiplier: {multiplier}");
-            Thread t = new Thread(() =>
-            {
-                RunVertexPostProcessing(m_ActiveBuffer, inc, multiplier);
-            });
-            t.Start();
-            //RenderTexture.active = DepthImageTexture;
-            //for (int i = 0; i < DepthImageTexture.width; i++)
-            //{
-            //    for (int j = 0; j < DepthImageTexture.height; j++)
-            //    {
-            //        DepthTexture2D.SetPixel(i, j, Color.blue);
-            //    }
-            //}
-            //DepthTexture2D.Apply();
-
-            //RenderTexture.active = null;
-            m_ActiveBuffer = m_UsingBufferA ? m_BufferB : m_BufferA;
-            m_UsingBufferA = !m_UsingBufferA;
-            activeMutex.ReleaseMutex();
-            //RunVertexPostProcessing(affineTransformation, m_ActiveBuffer, inc);
-            //t.Join();
-        }
-    }
-
-    private static readonly ChannelFloat32[] ChannelFloats = new ChannelFloat32[1];
-
-    private static void RunVertexPostProcessing(pair<cpointer<Vector3>, Mutex> dataToProcess, int count, float multiplier)
-    {
-        if (!dataToProcess.second.WaitOne(MAX_MUTEX_WAIT_TIME)) return;
-        //PointCloud2 cloud = new PointCloud2();
-        UInt8MultiArray arrData = new UInt8MultiArray();
-        try
-        {
-            Vector3* ptr = dataToProcess.first;
-            for (int i = 0; i < count; i++)
-            {
-                //Vector4 ptVec4 = ptr[i];
-                //ptVec4.w = 1.0f;
-                //Vector3 result = transformation * ptVec4;
-
-                Vector3 result = ptr[i] * multiplier;
-                result.x *= -1;
-                ptr[i] = result;
-            }
-            arrData.data = new byte[count * sizeof(Vector3)];
-            fixed (byte* dataStart = arrData.data)
-            {
-                memcpy(dataStart, ptr, sizeof(Vector3) * count);
-            }
-        }
-        finally
-        {
-            dataToProcess.second.ReleaseMutex();
-            //cloud.width = (uint)count;
-            //cloud.height = 1;
-            //cloud.is_dense = true;
-            //cloud.point_step = (uint)sizeof(Vector3);
-            //cloud.row_step = (uint)(count * sizeof(Vector3));
-            //cloud.fields = new PointField[count];
-            //PointField fieldStructure = new PointField("pos", 0, PointField.FLOAT32, 3);
-            //for (int i = 0; i < cloud.fields.Length; i++)
-            //{
-            //    cloud.fields[i] = fieldStructure;
-            //}
-            //RosConnection.RosSocket.Publish("/depth_camera_point_cloud", cloud);
-
-            RosConnection.RosSocket.Publish("/depth_camera_point_cloud_bytes", arrData);
-        }
-    }
-
+    
     private void OnDestroy()
     {
         lock (this)
@@ -268,12 +268,10 @@ public unsafe class DepthCameraParallel : MonoBehaviour
             if (IsManagingExternRes)
             {
                 free(m_CachedDirections);
-                free(m_BufferA.first);
-                free(m_BufferB.first);
-                m_BufferA.second.Dispose();
-                m_BufferB.second.Dispose();
 
-                free(m_ImageBuffer);
+                m_RaycastCommandPool.Dispose();
+                m_RaycastHitPool.Dispose();
+
                 IsManagingExternRes = false;
             }
         }
