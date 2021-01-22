@@ -67,7 +67,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
 
         m_RaycastCommandWorldToLocalQueue.Enqueue((commands, posWorldToLocalRot.Item2, posWorldToLocalRot.Item4));
 
-        Debug.Log($"#{posWorldToLocalRot.Item4} Finished raycast command preparation {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}");
+        Debug.Log($"#{posWorldToLocalRot.Item4} Finished raycast command preparation {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
     }
 
     private void DoParallelRaycast()
@@ -83,7 +83,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         JobHandle raycastJob = RaycastCommand.ScheduleBatch(cmdWorldToLocal.Item1, results, 100);
         m_RaycastJobResultsWorldToLocalQueue.Enqueue((raycastJob, results, cmdWorldToLocal.Item2, cmdWorldToLocal.Item1, resultsPtr, cmdWorldToLocal.Item3));
 
-        Debug.Log($"#{cmdWorldToLocal.Item3} Finished raycast scheduling {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}");
+        Debug.Log($"#{cmdWorldToLocal.Item3} Finished raycast scheduling {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
     }
 
     private void ObtainParallelRaycastResult()
@@ -106,7 +106,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         m_RaycastCommandPool.ReturnArray(handleHitsWorldToLocal.Item4);
         m_RaycastHitWorldToLocalQueue.Enqueue((handleHitsWorldToLocal.Item2, handleHitsWorldToLocal.Item3, handleHitsWorldToLocal.Item5, handleHitsWorldToLocal.Item6));
 
-        Debug.Log($"#{handleHitsWorldToLocal.Item6} Finished obtaining results {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}");
+        Debug.Log($"#{handleHitsWorldToLocal.Item6} Finished obtaining results {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
     }
 
     private void PostProcessRaycastResult()
@@ -133,7 +133,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         }
 
         m_PointCloudQueue.Enqueue((localPoints.ToArray(), hitsWorldToLocal.Item4));
-        Debug.Log($"#{hitsWorldToLocal.Item4} Finished post processing {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")}");
+        Debug.Log($"#{hitsWorldToLocal.Item4} Finished post processing {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
 
         m_RaycastHitPool.ReturnArray(hitsWorldToLocal.Item1);
     }
@@ -143,6 +143,16 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         bool hasNext = m_PointCloudQueue.TryDequeue(out (Vector3[], ulong) hitsWorldToLocal);
         if (!hasNext)
         {
+            return;
+        }
+
+        if (m_PointCloudQueue.Count > 10)
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                m_PointCloudQueue.TryDequeue(out _);
+            }
+            Debug.LogWarning($"Serializer dropped 10 frames {DateTime.UtcNow:yyyy - MM - dd HH: mm:ss.fff}");
             return;
         }
 
@@ -158,11 +168,11 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         }
 
         RosConnection.RosSocket.Publish("/depth_camera_point_cloud_bytes", arr);
-        Debug.Log($"#{hitsWorldToLocal.Item2} Finished sending array to ROS {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff")} with {hitsWorldToLocal.Item1.Length} points");
+        Debug.Log($"#{hitsWorldToLocal.Item2} Finished sending array to ROS {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff} with {hitsWorldToLocal.Item1.Length} points");
     }
 
-    public static readonly int PIXEL_COUNT_WIDTH = 100;
-    public static readonly int PIXEL_COUNT_HEIGHT = 100;
+    public static readonly int PIXEL_COUNT_WIDTH = 400;
+    public static readonly int PIXEL_COUNT_HEIGHT = 300;
     public static readonly float IMAGE_WIDTH = 2.0f;
     public static readonly float IMAGE_HEIGHT = 1.5f;
     public static readonly float IMAGE_DISTANCE = 1.0f;
@@ -231,7 +241,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
             }
         }).Start();
 
-        InvokeRepeating(nameof(CustomUpdate), 1.0f, DEPTH_CAM_DELTA_TIME);
+        //InvokeRepeating(nameof(CustomUpdate), 1.0f, DEPTH_CAM_DELTA_TIME);
     }
 
     private struct PreparationJob : IJob
@@ -284,17 +294,21 @@ public unsafe class DepthCameraParallel : MonoBehaviour
 
     private ulong m_PointCloudFrameCounter = 0;
 
-    private void CustomUpdate()
+    private void Update()
     {
-        if (m_PosMatRotQueue.Count < 100)
+        if (m_PointCloudFrameCounter % 20 == 0)
         {
-            m_PosMatRotQueue.Enqueue((transform.position, transform.worldToLocalMatrix, transform.rotation * CAM_ROT, m_PointCloudFrameCounter));
+            if (m_PosMatRotQueue.Count < 100)
+            {
+                m_PosMatRotQueue.Enqueue((transform.position, transform.worldToLocalMatrix, transform.rotation * CAM_ROT, m_PointCloudFrameCounter));
+            }
+
+            DoParallelRaycast();
+            ObtainParallelRaycastResult();
+            m_RaycastCommandPool.EnsureExtraCapacity();
+            m_RaycastHitPool.EnsureExtraCapacity();
         }
 
-        DoParallelRaycast();
-        ObtainParallelRaycastResult();
-        m_RaycastCommandPool.EnsureExtraCapacity();
-        m_RaycastHitPool.EnsureExtraCapacity();
         m_PointCloudFrameCounter++;
     }
 
