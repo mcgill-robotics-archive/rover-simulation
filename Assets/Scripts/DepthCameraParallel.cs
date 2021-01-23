@@ -171,7 +171,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         Debug.Log($"#{hitsWorldToLocal.Item2} Finished sending array to ROS {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff} with {hitsWorldToLocal.Item1.Length} points");
     }
 
-    public static readonly int PIXEL_COUNT_WIDTH = 400;
+    public static readonly int PIXEL_COUNT_WIDTH = 300;
     public static readonly int PIXEL_COUNT_HEIGHT = 300;
     public static readonly float IMAGE_WIDTH = 2.0f;
     public static readonly float IMAGE_HEIGHT = 1.5f;
@@ -296,7 +296,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
 
     private void Update()
     {
-        if (m_PointCloudFrameCounter % 20 == 0)
+        if (m_PointCloudFrameCounter % ((ulong) (DEPTH_CAM_DELTA_TIME / Time.deltaTime)) == 0)
         {
             if (m_PosMatRotQueue.Count < 100)
             {
