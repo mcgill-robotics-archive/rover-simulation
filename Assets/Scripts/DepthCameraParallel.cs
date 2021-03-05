@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using NetMQ;
+using NetMQ.Sockets;
 using RosSharp;
 using RosSharp.RosBridgeClient.MessageTypes.Geometry;
 using RosSharp.RosBridgeClient.MessageTypes.Sensor;
@@ -42,6 +44,8 @@ public unsafe class DepthCameraParallel : MonoBehaviour
     private Thread m_RaycastCommandPreparationThread;
     private Thread m_RaycastDataPostprocessingThread;
 
+    private PublisherSocket m_Publisher;
+
     private void Awake()
     {
         Instance = this;
@@ -67,7 +71,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
 
         m_RaycastCommandWorldToLocalQueue.Enqueue((commands, posWorldToLocalRot.Item2, posWorldToLocalRot.Item4));
 
-        Debug.Log($"#{posWorldToLocalRot.Item4} Finished raycast command preparation {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
+        //Debug.Log($"#{posWorldToLocalRot.Item4} Finished raycast command preparation {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
     }
 
     private void DoParallelRaycast()
@@ -83,7 +87,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         JobHandle raycastJob = RaycastCommand.ScheduleBatch(cmdWorldToLocal.Item1, results, 100);
         m_RaycastJobResultsWorldToLocalQueue.Enqueue((raycastJob, results, cmdWorldToLocal.Item2, cmdWorldToLocal.Item1, resultsPtr, cmdWorldToLocal.Item3));
 
-        Debug.Log($"#{cmdWorldToLocal.Item3} Finished raycast scheduling {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
+        //Debug.Log($"#{cmdWorldToLocal.Item3} Finished raycast scheduling {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
     }
 
     private void ObtainParallelRaycastResult()
@@ -106,7 +110,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         m_RaycastCommandPool.ReturnArray(handleHitsWorldToLocal.Item4);
         m_RaycastHitWorldToLocalQueue.Enqueue((handleHitsWorldToLocal.Item2, handleHitsWorldToLocal.Item3, handleHitsWorldToLocal.Item5, handleHitsWorldToLocal.Item6));
 
-        Debug.Log($"#{handleHitsWorldToLocal.Item6} Finished obtaining results {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
+        //Debug.Log($"#{handleHitsWorldToLocal.Item6} Finished obtaining results {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
     }
 
     private void PostProcessRaycastResult()
@@ -133,7 +137,7 @@ public unsafe class DepthCameraParallel : MonoBehaviour
         }
 
         m_PointCloudQueue.Enqueue((localPoints.ToArray(), hitsWorldToLocal.Item4));
-        Debug.Log($"#{hitsWorldToLocal.Item4} Finished post processing {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
+        //Debug.Log($"#{hitsWorldToLocal.Item4} Finished post processing {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}");
 
         m_RaycastHitPool.ReturnArray(hitsWorldToLocal.Item1);
     }
@@ -167,18 +171,19 @@ public unsafe class DepthCameraParallel : MonoBehaviour
             }
         }
 
-        RosConnection.RosSocket.Publish("/depth_camera_point_cloud_bytes", arr);
+        m_Publisher.SendFrame(arr.data);
+        //RosConnection.RosSocket.Publish("/depth_camera_point_cloud_bytes", arr);
         Debug.Log($"#{hitsWorldToLocal.Item2} Finished sending array to ROS {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff} with {hitsWorldToLocal.Item1.Length} points");
     }
 
-    public static readonly int PIXEL_COUNT_WIDTH = 300;
-    public static readonly int PIXEL_COUNT_HEIGHT = 300;
-    public static readonly float IMAGE_WIDTH = 2.0f;
-    public static readonly float IMAGE_HEIGHT = 1.5f;
-    public static readonly float IMAGE_DISTANCE = 1.0f;
+    public static readonly int PIXEL_COUNT_WIDTH = 1024;
+    public static readonly int PIXEL_COUNT_HEIGHT = 768;
+    public static readonly float IMAGE_WIDTH = 4.0f;
+    public static readonly float IMAGE_HEIGHT = 3.0f;
+    public static readonly float IMAGE_DISTANCE = 1.2f;
     public static readonly float PIXEL_WIDTH = (float)IMAGE_WIDTH / PIXEL_COUNT_HEIGHT;
     public static readonly float PIXEL_HEIGHT = (float)IMAGE_HEIGHT / PIXEL_COUNT_HEIGHT;
-    public static readonly float MAX_RANGE = 20.0f;
+    public static readonly float MAX_RANGE = 10.0f;
     public bool IsManagingExternRes { get; set; }
 
     [StructLayout(LayoutKind.Explicit, Size = 3 * sizeof(float))]
@@ -198,10 +203,15 @@ public unsafe class DepthCameraParallel : MonoBehaviour
 
     private static readonly int LENGTH = PIXEL_COUNT_WIDTH * PIXEL_COUNT_HEIGHT;
 
-    private static readonly float DEPTH_CAM_DELTA_TIME = 0.2f;
+    private static readonly float DEPTH_CAM_DELTA_TIME = 0.0666666666666666667f;
 
     private void Start()
     {
+        AsyncIO.ForceDotNet.Force();
+        Debug.Log("Starting server");
+        m_Publisher = new PublisherSocket();
+        m_Publisher.Bind("tcp://*:12345");
+
         //RosConnection.RosSocket.Advertise<PointCloud>("/depth_camera_point_cloud");
         RosConnection.RosSocket.Advertise<UInt8MultiArray>("/depth_camera_point_cloud_bytes");
 
@@ -294,22 +304,17 @@ public unsafe class DepthCameraParallel : MonoBehaviour
 
     private ulong m_PointCloudFrameCounter = 0;
 
-    private void Update()
+    private void FixedUpdate()
     {
-        if (m_PointCloudFrameCounter % ((ulong) (DEPTH_CAM_DELTA_TIME / Time.deltaTime)) == 0)
-        {
-            if (m_PosMatRotQueue.Count < 100)
-            {
-                m_PosMatRotQueue.Enqueue((transform.position, transform.worldToLocalMatrix, transform.rotation * CAM_ROT, m_PointCloudFrameCounter));
-            }
-
-            DoParallelRaycast();
-            ObtainParallelRaycastResult();
-            m_RaycastCommandPool.EnsureExtraCapacity();
-            m_RaycastHitPool.EnsureExtraCapacity();
+        if (m_PosMatRotQueue.Count < 100)
+        { 
+            m_PosMatRotQueue.Enqueue((transform.position, transform.worldToLocalMatrix, transform.rotation * CAM_ROT, m_PointCloudFrameCounter));
         }
 
-        m_PointCloudFrameCounter++;
+        DoParallelRaycast();
+        ObtainParallelRaycastResult();
+        m_RaycastCommandPool.EnsureExtraCapacity();
+        m_RaycastHitPool.EnsureExtraCapacity();
     }
 
     private static readonly Quaternion CAM_ROT = Quaternion.Euler(0.0f, -90.0f, 270.0f);
@@ -319,6 +324,8 @@ public unsafe class DepthCameraParallel : MonoBehaviour
     
     private void OnDestroy()
     {
+        m_Publisher.Dispose();
+
         if (IsManagingExternRes)
         {
             free(m_CachedDirections);
