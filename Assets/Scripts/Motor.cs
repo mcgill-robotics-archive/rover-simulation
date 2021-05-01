@@ -25,6 +25,9 @@ public class Motor : MonoBehaviour
     /// </summary>
     public bool TargetAngularSpeedOverride;
 
+    public float CurrentAngularSpeed { get; private set; }
+    public float CurrentAngularPosition { get; private set; }
+
     public float TargetAngularSpeedAbsolute
     {
         get => TargetAngularSpeed;
@@ -43,10 +46,23 @@ public class Motor : MonoBehaviour
         rb.maxAngularVelocity = float.MaxValue;
     }
 
-    void Update()
+    void FixedUpdate()
     {
         Rigidbody rb = GetComponent<Rigidbody>();
         float currentAngularSpeed = Vector3.Project(rb.angularVelocity, transform.forward).magnitude;
+
+        float angPos = transform.localRotation.eulerAngles.z;
+        if (InvertRotationDirection)
+        {
+            angPos = 360.0f - angPos;
+        }
+
+        CurrentAngularPosition = angPos * Mathf.Deg2Rad;
+
+        //while (CurrentAngularPosition >= 2 * Mathf.PI)
+        //{
+        //    CurrentAngularPosition -= 2 * Mathf.PI;
+        //}
 
         if (TargetAngularSpeed > 0.05f) // forward
         {
