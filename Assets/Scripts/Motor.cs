@@ -25,8 +25,11 @@ public class Motor : MonoBehaviour
     /// </summary>
     public bool TargetAngularSpeedOverride;
 
+    private float m_AngularPositionOffset = 0.0f;
+
     public float CurrentAngularSpeed { get; private set; }
-    public float CurrentAngularPosition { get; private set; }
+    private float m_CurrentAngularPosition;
+    public float CurrentAngularPosition => EnsureAngleInRange(m_CurrentAngularPosition - m_AngularPositionOffset);
 
     public float TargetAngularSpeedAbsolute
     {
@@ -40,10 +43,30 @@ public class Motor : MonoBehaviour
         }
     }
 
+    static float EnsureAngleInRange(float input)
+    {
+        while (input >= 2.0f * Mathf.PI)
+        {
+            input -= 2 * Mathf.PI;
+        }
+
+        while (input < 0.0f)
+        {
+            input += 2 * Mathf.PI;
+        }
+
+        return input;
+    }
+
     void Start()
     {
         Rigidbody rb = GetComponent<Rigidbody>();
         rb.maxAngularVelocity = float.MaxValue;
+    }
+
+    public void ResetAngularPosition()
+    {
+        m_AngularPositionOffset = m_CurrentAngularPosition;
     }
 
     void FixedUpdate()
@@ -56,13 +79,9 @@ public class Motor : MonoBehaviour
         {
             angPos = 360.0f - angPos;
         }
-
-        CurrentAngularPosition = angPos * Mathf.Deg2Rad;
-
-        //while (CurrentAngularPosition >= 2 * Mathf.PI)
-        //{
-        //    CurrentAngularPosition -= 2 * Mathf.PI;
-        //}
+        
+        m_CurrentAngularPosition = EnsureAngleInRange(angPos * Mathf.Deg2Rad);
+        
 
         if (TargetAngularSpeed > 0.05f) // forward
         {

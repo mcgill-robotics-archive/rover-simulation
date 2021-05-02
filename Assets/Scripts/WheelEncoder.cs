@@ -10,6 +10,7 @@ public class WheelEncoder : MonoBehaviour
     private Motor[] m_Motors;
     private bool m_Published = false;
     private const float WHEEL_ENCODER_DELTA_TIME = 0.1f;
+    private bool m_FirstRun = true;
 
     void Start()
     {
@@ -36,6 +37,16 @@ public class WheelEncoder : MonoBehaviour
         {
             m_Motors = GameObject.Find("Rover").GetComponent<RoverController>().Motors;
             return;
+        }
+
+        if (m_FirstRun)
+        {
+            // calibrate
+            foreach (Motor motor in m_Motors)
+            {
+                motor.ResetAngularPosition();
+            }
+            m_FirstRun = false;
         }
 
         Float32MultiArray data = new Float32MultiArray();
